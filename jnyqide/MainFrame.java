@@ -992,6 +992,7 @@ public class MainFrame extends JFrame {
         else if (cmd.equals("Next")) doEditNext(e);
         else if (cmd.equals("Select Expression")) doEditSelectExpression(e);
         else if (cmd.equals("About")) About();
+        else if (cmd.equals("About Extension Manager...")) ExtensionManagerAbout();
         else if (cmd.equals("Manual")) doHelpManual(e);
         else if (cmd.equals("Replay")) doProcessReplay(e);
         else if (cmd.equals("Plot")) doProcessPlot(e);
@@ -1337,6 +1338,22 @@ public class MainFrame extends JFrame {
     }
     
 
+    public void ExtensionManagerAbout() {
+        MainFrame_ExtManAbout dlg = new MainFrame_ExtManAbout(this);
+        Dimension dlgSize = dlg.getPreferredSize();
+        Dimension frmSize = getSize();
+        Point loc = getLocation();
+        dlg.setLocation((frmSize.width - dlgSize.width) / 2 + loc.x,
+                        (frmSize.height - dlgSize.height) / 2 + loc.y);
+        dlg.setModal(true);
+        dlg.setVisible(true);
+        
+        Graphics g = jFrame.getContentPane().getGraphics();
+        g.setColor(Color.cyan);
+        g.fillRect(50, 50, 100, 100);
+        
+    }
+    
     public void doHelpManual(ActionEvent e) {
         // separate browser gets to use frames (with index) by 
         // opening home.html
