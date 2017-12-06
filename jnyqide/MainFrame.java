@@ -49,6 +49,7 @@ public class MainFrame extends JFrame {
     JMenu jMenuFile = new JMenu();
     JMenu jMenuEdit = new JMenu();
     JMenu jMenuProcess = new JMenu();
+    JMenu jMenuExtension = new JMenu();
     JMenu jMenuWindow = new JMenu();
     JMenu jMenuHelp = new JMenu();
 
@@ -659,6 +660,20 @@ public class MainFrame extends JFrame {
             menuButtonListener);
         menuAddItem(jMenuProcess, "Mark", 'a', null, menuButtonListener);
         
+        jMenuExtension.setText("Extension");
+        menuAddItem(jMenuExtension, "Extension Manager...", 'x', 
+            KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_X,
+                       Toolkit.getDefaultToolkit().getMenuShortcutKeyMask()),
+            menuButtonListener);
+        menuAddItem(jMenuExtension, "About Extension Manager...", '\000', null, menuButtonListener);
+
+        if (!isMac()) {  // if isMac(), Quit (not Exit) and Prefs are on the 
+                         // application menu
+            menuAddItem(jMenuFile, "Preferences...", '\000', null, 
+                        menuButtonListener);
+            menuAddItem(jMenuFile, "Exit", '\000', null, menuButtonListener);
+        }
+
         jMenuWindow.setText("Window");
         menuAddItem(jMenuWindow, "Tile", 't', null, menuButtonListener);
         menuAddItem(jMenuWindow, "Browse", 'b', null, menuButtonListener);
@@ -703,6 +718,7 @@ public class MainFrame extends JFrame {
         jMenuBar1.add(jMenuFile);
         jMenuBar1.add(jMenuEdit);
         jMenuBar1.add(jMenuProcess);
+        jMenuBar1.add(jMenuExtension);
         jMenuBar1.add(jMenuWindow);
         jMenuBar1.add(jMenuHelp);
         this.setJMenuBar(jMenuBar1);
