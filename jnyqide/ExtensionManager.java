@@ -16,6 +16,20 @@ import javax.swing.ListSelectionModel;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.StringWriter;
+import java.io.Writer;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.List;
+import java.util.Map;
+
+
 public class ExtensionManager extends JDialog {
 
 	private final JPanel contentPanel = new JPanel();
@@ -78,18 +92,14 @@ public class ExtensionManager extends JDialog {
 			}
 			getContentPane().add(new JScrollPane(table));
 			
-			for (int count = 1; count <= 30; count++) {
-		        dtm.addRow(new Object[] { "data", "data", "data",
-		                "data", "data", "data" });
+			String[] extensions = LoadExtensionData();
+			
+			for (int i = 0; i < extensions.length; ++i)
+			{
+				String[] extension = SplitExtensionData(extensions[i]);
+		        dtm.addRow(new Object[] { "data", "data", "data", extensions[i], "data" });
 			}
 		}
-		
-		
-		
-		
-		
-		
-		
 		
 		{
 			JPanel buttonPane = new JPanel();
@@ -118,4 +128,50 @@ public class ExtensionManager extends JDialog {
 			}
 		}
 	}
+	
+	String[] SplitExtensionData(String line)
+	{
+		return null;
+	}
+		
+	String[] LoadExtensionData()
+	{
+		String link = "https://raw.githubusercontent.com/keipour/nyquist-extensions/master/extlist.txt";
+		try{
+		    URL url = new URL(link);
+			HttpURLConnection http = (HttpURLConnection) url.openConnection();
+			Map<String, List<String>> header = http.getHeaderFields();
+
+			InputStream stream = http.getInputStream();
+			String response = GetStringFromStream(stream);
+			
+			return response.split(System.getProperty("line.separator"));
+		} 
+		catch(Exception e)
+		{
+			return null;
+		}
+	}
+	
+	private static String GetStringFromStream(InputStream stream) throws IOException 
+	{
+		if (stream != null) {
+			Writer writer = new StringWriter();
+ 
+			char[] buffer = new char[2048];
+			try {
+				Reader reader = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
+				int counter;
+				while ((counter = reader.read(buffer)) != -1) {
+					writer.write(buffer, 0, counter);
+				}
+			} finally {
+				stream.close();
+			}
+			return writer.toString();
+		} else {
+			return "No Contents";
+		}
+	}
 }
+
