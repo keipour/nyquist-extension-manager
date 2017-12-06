@@ -50,19 +50,10 @@ public class ExtensionManager extends JDialog {
 			table.setColumnSelectionAllowed(false);
 			table.setRowSelectionAllowed(true);
 			String header[] = new String[] { "Package", "Ver.", "Date", "Description", "URL" };
-			table.setModel(new DefaultTableModel(
-					new Object[][] {
-							{null, null, null, null, null},
-							{null, null, null, null, null},
-							{null, null, null, null, null},
-							{null, null, null, null, null},
-							{null, null, null, null, null},
-						},
-						header
-			)
+			DefaultTableModel dtm = new DefaultTableModel(0, 0)			
 			{
 				Class[] columnTypes = new Class[] {
-					String.class, String.class, String.class, String.class, String.class
+						String.class, String.class, String.class, String.class, String.class
 				};
 				public Class getColumnClass(int columnIndex) {
 					return columnTypes[columnIndex];
@@ -73,7 +64,10 @@ public class ExtensionManager extends JDialog {
 				public boolean isCellEditable(int row, int column) {
 					return columnEditables[column];
 				}
-			});
+			};
+
+			dtm.setColumnIdentifiers(header);
+			table.setModel(dtm);
 			{
 				table.getColumnModel().getColumn(0).setPreferredWidth(182);
 				table.getColumnModel().getColumn(1).setPreferredWidth(100);
@@ -83,6 +77,11 @@ public class ExtensionManager extends JDialog {
 				getContentPane().add(table, BorderLayout.NORTH);
 			}
 			getContentPane().add(new JScrollPane(table));
+			
+			for (int count = 1; count <= 30; count++) {
+		        dtm.addRow(new Object[] { "data", "data", "data",
+		                "data", "data", "data" });
+			}
 		}
 		
 		
