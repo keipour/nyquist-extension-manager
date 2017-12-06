@@ -1,0 +1,3522 @@
+<a href = "part18.html">Previous Section</a> | <a href = "indx.html">Next Section (Index)</a> | <a href = "title.html#toc">Table of Contents</a> | <a href = "title.html">Title Page</a>
+<hr>
+<html><head><title>Appendix 3: XLISP: An Object-oriented Lisp</title>
+<link rel="stylesheet" type="text/css" href="nyquiststyle.css">
+</head>
+<a name = "227"><h2>Appendix 3: XLISP: An Object-oriented Lisp</h2></a>
+
+<blockquote>
+<p>
+<b>Version 2.0</b>
+<p>
+February 6, 1988
+<p>
+by<br>
+
+<b>David Michael Betz</b><br>
+
+127 Taylor Road<br>
+
+Peterborough, NH 03458
+<p>
+Copyright (c) 1988, by David Michael Betz<br>
+
+All Rights Reserved<br>
+
+Permission is granted for unrestricted non-commercial use<br>
+
+</blockquote>
+
+
+
+
+
+
+<a name = "228"><h3>Introduction</h3></a>
+        XLISP is an experimental programming language combining some of
+        the features of Common Lisp with an object-oriented extension
+        capability.  It was implemented to allow experimentation with
+        object-oriented programming on small computers.
+<p>
+        Implementations of XLISP run on virtually every operating system.
+        XLISP is completely written in the programming language
+        C and is easily extended with user written built-in functions
+        and classes.  It is available in source form to non-commercial
+        users.
+<p>
+        Many Common Lisp functions are built into XLISP.  In addition,
+        XLISP defines the objects Object and Class as primitives.
+        Object is the only class that has no superclass and hence is
+        the root of the class hierarchy tree.  Class is the class of
+        which all classes are instances (it is the only object that is
+        an instance of itself).
+<p>
+        This document is a brief description of XLISP.  It assumes some
+        knowledge of LISP and some understanding of the concepts of
+        object-oriented programming.
+<p>
+        I recommend the book <i>Lisp</i> by Winston and Horn and published by
+        Addison Wesley for learning Lisp.  The first edition of this
+        book is based on MacLisp and the second edition is based on
+        Common Lisp. 
+<p>
+        You will probably also need a copy of <i>Common Lisp: The
+        Language</i> by Guy L. Steele, Jr., published by Digital Press to
+        use as a reference for some of the Common Lisp functions that
+        are described only briefly in this document.
+<p>
+        <a name = "229"><h3>A Note From The Author</h3></a>
+<p>
+        If you have any problems with XLISP, feel free to contact me [me being David Betz - RBD] for
+        help or advice.  Please remember that since XLISP is available
+        in source form in a high level language, many users [e.g. that Dannenberg fellow - RBD] have been
+        making versions available on a variety of machines.  If you call
+        to report a problem with a specific version, I may not be able
+        to help you if that version runs on a machine to which I don't
+        have access.  Please have the version number of the version that
+        you are running readily accessible before calling me.
+<p>
+        If you find a bug in XLISP, first try to fix the bug yourself
+        using the source code provided.  If you are successful in fixing
+        the bug, send the bug report along with the fix to me.  If you
+        don't have access to a C compiler or are unable to fix a bug,
+        please send the bug report to me and I'll try to fix it.
+<p>
+        Any suggestions for improvements will be welcomed.  Feel free to
+        extend the language in whatever way suits your needs.  However,
+        PLEASE DO NOT RELEASE ENHANCED VERSIONS WITHOUT CHECKING WITH ME
+        FIRST!!  I would like to be the clearing house for new features
+        added to XLISP.  If you want to add features for your own
+        personal use, go ahead.  But, if you want to distribute your
+        enhanced version, contact me first.  Please remember that the
+        goal of XLISP is to provide a language to learn and experiment
+        with LISP and object-oriented programming on small computers.  I
+        don't want it to get so big that it requires megabytes of memory
+        to run.
+<p>
+        <a name = "230"><h3>XLISP Command Loop</h3></a><a name="index1410"></a><a name="index1411"></a>
+<p>
+        When XLISP is started, it first tries to load the workspace
+        <code>xlisp.wks</code> from the current directory.  If that file doesn't
+        exist, XLISP builds an initial workspace, empty except for the
+        built-in functions and symbols.
+<p>
+        Then XLISP attempts to load <code>init.lsp</code> from the current
+        directory.  It then loads any files named as parameters on the
+        command line (after appending <code>.lsp</code> to their names).
+<p>
+        XLISP then issues the following prompt:
+<p><pre>
+        &gt;
+</pre></p>
+
+        This indicates that XLISP is waiting for an expression to be
+        typed.
+<p>
+        When a complete expression has been entered, XLISP attempts to
+        evaluate that expression.  If the expression evaluates
+        successfully, XLISP prints the result and then returns to the
+        initial prompt waiting for another expression to be typed.
+<p>
+        <a name = "231"><h3>Special Characters</h3></a><a name="index1412"></a>
+<p>
+ When XLISP is running from a console, some control characters invoke operations:
+<ul>
+<li>
+Backspace and Delete characters erase the previous character on the input line (if any).
+<li>Control-U erases the entire input line. 
+<li>Control-C executes the TOP-LEVEL function.
+<li>Control-G executes the CLEAN-UP function.
+<li>Control-P executes the CONTINUE function.
+<li>Control-B stops execution and enters the break command loop. Execution can be continued by typing Control-P or (CONTINUE).
+<li>Control-E turns on character echoing (Linux and Mac OS X only).
+<li>Control-F turns off character echoing (Linux and Mac OS X only).
+<li>Control-T evaluates the INFO function.
+</ul>
+<p>
+        <a name = "232"><h3>Break Command Loop</h3></a><a name="index1413"></a>
+<p>
+        When XLISP encounters an error while evaluating an expression,
+        it attempts to handle the error in the following way:
+<p>
+        If the symbol <code>*breakenable*<a name="index1414"></a></code> is
+        true, the message corresponding to the error is printed.  If
+        the error is correctable, the correction message is printed.
+<p>
+        If the symbol <code>*tracenable*<a name="index1415"></a></code> is true, a trace back is printed.
+        The number of entries printed depends on the value of the symbol
+        <code>*tracelimit*<a name="index1416"></a></code>.  If this symbol is set to something other than a
+        number, the entire trace back stack is printed.
+<p>
+        XLISP then enters a read/eval/print loop to allow the user to
+        examine the state of the interpreter in the context of the
+        error.  This loop differs from the normal top-level
+        read/eval/print loop in that if the user invokes the function
+        <code>continue</code>, XLISP will continue from a correctable error.  If
+        the user invokes the function <code>clean-up</code>, XLISP will abort the
+        break loop and return to the top level or the next lower
+        numbered break loop.  When in a break loop, XLISP prefixes the
+        break level to the normal prompt.
+<p>
+        If the symbol <code>*breakenable*<a name="index1417"></a></code> is <code>nil</code>, XLISP looks for a
+        surrounding errset function.  If one is found, XLISP examines
+        the value of the print flag.  If this flag is true, the error
+        message is printed.  In any case, XLISP causes the errset
+        function call to return <code>nil</code>.
+<p>
+        If there is no surrounding errset function, XLISP prints the
+        error message and returns to the top level.
+<p>
+        <a name = "233"><h3>Data Types</h3></a><a name="index1418"></a><a name="index1419"></a>
+<p>
+        There are several different data types available to XLISP
+        programmers.
+<p>
+<ul>
+<li>
+lists
+<li>symbols
+<li>strings
+<li>integers
+<li>characters
+<li>floats
+<li>objects
+<li>arrays
+<li>streams
+<li>subrs (built-in functions)
+<li>fsubrs (special forms)
+<li>closures (user defined functions)
+</ul>
+<p>
+<a name = "234"><h3>The Evaluator</h3></a><a name="index1420"></a><a name="index1421"></a>
+<p>
+        The process of evaluation in XLISP:
+<ul>
+<li>
+        Strings, integers, characters, floats, objects, arrays, streams,
+        subrs, fsubrs and closures evaluate to themselves.
+<li>        Symbols act as variables and are evaluated by retrieving the
+        value associated with their current binding.
+<li>        Lists are evaluated by examining the first element of the list
+        and then taking one of the following actions:
+<ul>
+<li>
+            If it is a symbol, the functional binding of the symbol is
+            retrieved.
+<li>            If it is a lambda expression, a closure is constructed for
+            the function described by the lambda expression.
+<li>            If it is a subr, fsubr or closure, it stands for itself.
+<li>            Any other value is an error.
+</ul>
+        Then, the value produced by the previous step is examined:
+<ul>
+<li>
+            If it is a subr or closure, the remaining list elements are
+            evaluated and the subr or closure is called with these
+            evaluated expressions as arguments.
+<li>            If it is an fsubr, the fsubr is called using the remaining
+            list elements as arguments (unevaluated).
+<li>            If it is a macro, the macro is expanded using the remaining
+            list elements as arguments (unevaluated).  The macro
+            expansion is then evaluated in place of the original macro
+            call.
+</ul>
+</ul>
+<p>
+<a name = "235"><h3>Lexical Conventions</h3></a><a name="index1422"></a><a name="index1423"></a>
+<p>
+        The following conventions must be followed when entering XLISP
+        programs:
+<p>
+        Comments in XLISP code begin with a semi-colon character and
+        continue to the end of the line.
+<p>
+        Symbol names in XLISP can consist of any sequence of non-blank
+        printable characters except the following:
+<p><pre>
+                ( ) ' ` , " ;
+</pre></p>
+
+        Uppercase and lowercase characters are not distinguished within
+        symbol names.  All lowercase characters are mapped to uppercase
+        on input.
+<p>
+        Integer literals consist of a sequence of digits optionally
+        beginning with a <code>+</code> or <code>-</code>.  The range of values an integer can
+        represent is limited by the size of a C <code>long</code> on the machine on
+        which XLISP is running.
+<p>
+        Floating point literals consist of a sequence of digits
+        optionally beginning with a <code>+</code> or <code>-</code> and including an embedded
+        decimal point.  The range of values a floating point number can
+        represent is limited by the size of a C <code>float</code> (<code>double</code> on
+        machines with 32 bit addresses) on the machine on which XLISP is
+        running.
+<p>
+        Literal strings are sequences of characters surrounded by double
+        quotes.  Within quoted strings the "<code>\</code>" character is used to
+        allow non-printable characters to be included.  The codes
+        recognized are:
+<ul>
+<li>
+<code>\\</code>        means the character "<code>\</code>"
+<li><code>\n</code>      means newline
+<li><code>\t</code>       means tab
+<li><code>\r</code>       means return
+<li><code>\f</code>       means form feed
+<li><code>\nnn</code>    means the character whose octal code is nnn
+</ul>
+<p>
+<a name = "236"><h3>Readtables</h3></a><a name="index1424"></a>
+<p>
+        The behavior of the reader is controlled by a data structure
+        called a <i>readtable</i>.  The reader uses the symbol <code>*readtable*<a name="index1425"></a></code> to
+        locate the current readtable.  This table controls the
+        interpretation of input characters.  It is an array with 128
+        entries, one for each of the ASCII character codes.  Each entry
+        contains one of the following things:
+<ul>
+<li>
+                <code>NIL</code> &ndash;          Indicating an invalid character
+<li>                <code>:CONSTITUENT</code> &ndash;   Indicating a symbol constituent
+<li>                <code>:WHITE-SPACE</code>  &ndash;  Indicating a whitespace character
+<li>                <code>(:TMACRO . <i>fun</i>)</code> &ndash; Terminating readmacro
+<li>                <code>(:NMACRO . <i>fun</i>)</code> &ndash; Non-terminating readmacro
+<li>                <code>:SESCAPE</code> &ndash;       Single escape character ('\')
+<li>                <code>:MESCAPE</code> &ndash;       Multiple escape character ('|')
+</ul>
+<p>
+        In the case of <code>:TMACRO</code> and <code>:NMACRO</code>, the <i>fun</i> component is a
+        function.  This can either be a built-in readmacro function or a
+        lambda expression.  The function should take two parameters.
+        The first is the input stream and the second is the character
+        that caused the invocation of the readmacro.  The readmacro
+        function should return <code>NIL</code> to indicate that the character should
+        be treated as white space or a value consed with <code>NIL</code> to indicate
+        that the readmacro should be treated as an occurence of the
+        specified value.  Of course, the readmacro code is free to read
+        additional characters from the input stream.
+<p>
+        XLISP defines several useful read macros<a name="index1426"></a>:
+<ul>
+<li>
+                <code>'</code><i>&lt;expr&gt;</i>         == <code>(quote</code> <i>&lt;expr&gt;</i><code>)</code>
+<li>                <code>#'</code><i>&lt;expr&gt;</i>        == <code>(function</code> <i>&lt;expr&gt;</i><code>)</code>
+<li>                <code>#(</code><i>&lt;expr&gt;</i>...<code>)</code>    == an array of the specified expressions
+<li>                <code>#x</code><i>&lt;hdigits&gt;</i>     == a hexadecimal number (0-9,A-F)
+<li>                <code>#o</code><i>&lt;odigits&gt;</i>     == an octal number (0-7)
+<li>                <code>#b</code><i>&lt;bdigits&gt;</i>     == a binary number (0-1)
+<li>                <code>#\</code><i>&lt;char&gt;</i> == the ASCII code of the character
+<li>                <code>#|</code> ... <code>|#</code>       == a comment
+<li>                <code>#:</code><i>&lt;symbol&gt;</i>      == an uninterned symbol
+<li>                <code>`</code><i>&lt;expr&gt;</i>        == <code>(backquote</code> <i>&lt;expr&gt;</i><code>)</code>
+<li>                <code>,</code><i>&lt;expr&gt;</i>        == <code>(comma</code> <i>&lt;expr&gt;</i><code>)</code>
+<li>   <code>,@</code><i>&lt;expr&gt;</i> == <code>(comma-at</code> <i>&lt;expr&gt;</i><code>)</code></ul>
+<a name = "237"><h3>Lambda Lists</h3></a><a name="index1427"></a>
+<p>
+        There are several forms in XLISP that require that a "lambda
+        list" be specified.  A lambda list is a definition of the
+        arguments accepted by a function.  There are four different
+        types of arguments.
+<p>
+        The lambda list starts with required arguments.  Required
+        arguments must be specified in every call to the function.
+<p>
+        The required arguments are followed by the <code>&amp;optional</code> arguments.
+        Optional arguments may be provided or omitted in a call.  An
+        initialization expression may be specified to provide a default
+        value for an <code>&amp;optional</code> argument if it is omitted from a call.
+        If no initialization expression is specified, an omitted
+        argument is initialized to <code>NIL</code>.  It is also possible to provide
+        the name of a <code>supplied-p</code> variable that can be used to
+        determine if a call provided a value for the argument or if the
+        initialization expression was used.  If specified, the supplied-
+        p variable will be bound to T if a value was specified in the
+        call and <code>NIL</code> if the default value was used.
+<p>
+        The <code>&amp;optional</code> arguments are followed by the <code>&amp;rest</code> argument.  The
+        <code>&amp;rest</code> argument gets bound to the remainder of the argument list
+        after the required and <code>&amp;optional</code> arguments have been removed.
+<p>
+        The <code>&amp;rest</code> argument is followed by the <code>&amp;key</code> arguments.  When a
+        keyword argument is passed to a function, a pair of values
+        appears in the argument list.  The first expression in the pair
+        should evaluate to a keyword symbol (a symbol that begins with a
+        "<code>:</code>").  The value of the second expression is the value of the
+        keyword argument.  Like <code>&amp;optional</code> arguments, <code>&amp;key</code> arguments can
+        have initialization expressions and supplied-p variables.  In
+        addition, it is possible to specify the keyword to be used in a
+        function call.  If no keyword is specified, the keyword obtained
+        by adding a "<code>:</code>" to the beginning of the keyword argument symbol
+        is used.  In other words, if the keyword argument symbol is
+        <code>foo</code>, the keyword will be <code>:foo</code>.
+<p>
+        The <code>&amp;key</code> arguments are followed by the <code>&amp;aux</code> variables.  These
+        are local variables that are bound during the evaluation of the
+        function body.  It is possible to have initialization
+        expressions for the <code>&amp;aux</code> variables.
+<p>
+    Here is the complete syntax for lambda lists:
+<blockquote>
+                (<i>rarg</i>...<br>
+
+                 [<code>&amp;optional</code> [<i>oarg</i> | (<i>oarg</i> [<i>init</i> [<i>svar</i>]])]...]<br>
+
+                 [<code>&amp;rest</code> <i>rarg</i>]<br>
+
+                 [<code>&amp;key</code><br>
+
+                   [<i>karg</i> | ([<i>karg</i> | (<i>key</i> <i>karg</i>)] [<i>init</i> [<i>svar</i>]])]...<br>
+
+                   <code>&amp;allow</code>-other-keys]<br>
+
+                 [<code>&amp;aux</code><br>
+
+                   [<i>aux</i> | (<i>aux</i> [<i>init</i>])]...])
+<p>
+            where:
+<p>
+                <i>rarg</i> is a required argument symbol<br>
+
+                <i>oarg</i> is an <code>&amp;optional</code> argument symbol<br>
+
+                <i>rarg</i> is the <code>&amp;rest</code> argument symbol<br>
+
+                <i>karg</i> is a <code>&amp;key</code> argument symbol<br>
+
+                <i>key</i> is a keyword symbol<br>
+
+                <i>aux</i> is an auxiliary variable symbol<br>
+
+                <i>init</i> is an initialization expression<br>
+
+                <i>svar</i> is a supplied-p variable symbol </blockquote>
+<a name = "238"><h3>Objects</h3></a><a name="index1428"></a>
+        Definitions:
+<ul>
+<li>
+selector &ndash; a symbol used to select an appropriate method
+<li>message &ndash; a selector and a list of actual arguments
+<li>method &ndash; the code that implements a message
+</ul>
+        Since XLISP was created to provide a simple basis for
+        experimenting with object-oriented programming, one of the
+        primitive data types included is <i>object</i>.  In XLISP, an object
+        consists of a data structure containing a pointer to the
+        object's class as well as an array containing the values of the
+        object's instance variables.
+<p>
+        Officially, there is no way to see inside an object (look at the
+        values of its instance variables).  The only way to communicate
+        with an object is by sending it a message.
+<p>
+        You can send a message to an object using the <code>send</code> function.
+        This function takes the object as its first argument, the
+        message selector as its second argument (which must be a symbol)
+        and the message arguments as its remaining arguments.
+<p>
+        The <code>send</code> function determines the class of the receiving object
+        and attempts to find a method corresponding to the message
+        selector in the set of messages defined for that class.  If the
+        message is not found in the object's class and the class has a
+        super-class, the search continues by looking at the messages
+        defined for the super-class.  This process continues from one
+        super-class to the next until a method for the message is found.
+        If no method is found, an error occurs.
+<p>
+
+<p>
+        When a method is found, the evaluator binds the receiving object
+        to the symbol <code>self</code> and evaluates the method using the
+        remaining elements of the original list as arguments to the
+        method.  These arguments are always evaluated prior to being
+        bound to their corresponding formal arguments.  The result of
+        evaluating the method becomes the result of the expression.
+<p>
+        Within the body of a method, a message can be sent to the current
+        object by calling the <code>(send self ...)</code>. The method lookup
+        starts with the object's class regardless of the class containing
+        the current method.
+<p>
+        Sometimes it is desirable to invoke a general method in a superclass
+        even when it is overridden by a more specific method in a subclass.
+        This can be accomplished by calling <code>send-super</code>, which begins
+        the method lookup in the superclass of the class defining the current
+        method rather than in the class of the current object.
+<p>
+        The <code>send-super</code> function takes a selector as its first argument
+        (which must be a symbol) and the message arguments as its remaining
+        arguments. Notice that <code>send-super</code> can only be sent from within
+        a method, and the target of the message is always the current object
+        (<code>self</code>). <code>(send-super ...)</code> is similar to 
+        <code>(send self ...)</code> except that method lookup begins in the 
+        superclass of the class containing the current method
+        rather than the class of the current object.
+<p>
+<a name = "239"><h3>The "Object" Class</h3></a><a name="index1429"></a>
+<p>
+<code>Object</code><a name="index1430"></a> &ndash; the top of the class hierarchy.
+<p>
+Messages:
+<div style="padding-left: 0em;">
+<code>:show<a name="index1431"></a></code> &ndash; show an object's instance variables.
+</div><div style="padding-left: 2em;">
+returns &ndash;  the object<br>
+
+</div>
+<br>
+<code>:class<a name="index1432"></a></code> &ndash; return the class of an object
+</div><div style="padding-left: 2em;">
+returns &ndash;  the class of the object<br>
+
+</div>
+<br>
+<code>:isa<a name="index1433"></a></code> <i>class</i> &ndash; test if object inherits from class
+</div><div style="padding-left: 2em;">
+returns &ndash; <code>t</code> if object is an instance of <i>class</i> or a subclass of <i>class</i>, otherwise <code>nil</code><br>
+
+</div>
+<br>
+<code>:isnew<a name="index1434"></a></code> &ndash; the default object initialization routine
+</div><div style="padding-left: 2em;">
+returns &ndash;  the object<br>
+
+</div>
+</div>
+
+<p>
+<a name = "240"><h3>The "Class" Class</h3></a><a name="index1435"></a>
+<p>
+<code>Class<a name="index1436"></a></code> &ndash; class of all object classes (including itself)
+<p>
+            Messages:
+<div style="padding-left: 0em;">
+                <code>:new<a name="index1437"></a></code> &ndash; create a new instance of a class
+</div><div style="padding-left: 2em;">
+                    returns &ndash;    the new class object<br>
+
+</div>
+<br>
+                <code>:isnew<a name="index1438"></a></code> <i>ivars</i> [<i>cvars</i> [<i>super</i>]] &ndash; initialize a new class
+</div><div style="padding-left: 2em;">
+                    <i>ivars</i> &ndash;    the list of instance variable symbols</div>
+<div style="padding-left: 2em;">                    <i>cvars</i> &ndash;    the list of class variable symbols</div>
+<div style="padding-left: 2em;">                    <i>super</i> &ndash;    the superclass (default is object)</div>
+<div style="padding-left: 2em;">                    returns &ndash;    the new class object<br>
+
+</div>
+<br>
+                <code>:answer<a name="index1439"></a></code> <i>msg</i> <i>fargs</i> <i>code</i> &ndash; add a message to a class
+</div><div style="padding-left: 2em;">
+                    <i>msg</i> &ndash;      the message symbol</div>
+<div style="padding-left: 2em;">                <i>fargs</i> &ndash;    the formal argument list (lambda list)</div>
+<div style="padding-left: 2em;">                    <i>code</i> &ndash;     a list of executable expressions</div>
+<div style="padding-left: 2em;">                    returns &ndash;    the object<br>
+
+</div>
+
+</div>
+
+<p>
+        When a new instance of a class is created by sending the message
+        <code>:new</code> to an existing class, the message <code>:isnew</code> followed by
+        whatever parameters were passed to the <code>:new</code> message is sent to
+        the newly created object.
+<p>
+        When a new class is created by sending the <code>:new</code> message to the
+        object <code>Class</code>, an optional parameter may be specified
+        indicating the superclass of the new class.  If this parameter
+        is omitted, the new class will be a subclass of <code>Object</code>.  A
+        class inherits all instance variables, class variables, and
+        methods from its super-class.
+<p>
+<a name = "241"><h3>Profiling</h3></a><a name="index1440"></a>
+The Xlisp 2.0 release has been extended with a profiling facility, which counts how many times and where <code>eval</code> is executed.  A separate count is maintained for each named function, closure, or macro, and a count indicates an <code>eval</code> in the immediately (lexically) enclosing named function, closure, or macro.  Thus, the count gives an indication of the amount of time spent in a function, not counting nested function calls.  The list of all functions executed is maintained on the global <code>*profile*</code> variable.  These functions in turn have <code>*profile*</code> properties, which maintain the counts.  The profile system merely increments counters and puts symbols on the <code>*profile*</code> list.  It is up to the user to initialize data and gather results.  Profiling is turned on or off with the <code>profile</code> function.  Unfortunately, methods cannot be profiled with this facility.
+<p>
+
+<a name = "242"><h3>Symbols</h3></a><a name="index1441"></a>
+<ul>
+<li>
+<code>self</code><a name="index1442"></a> - the current object (within a method context)
+<li><code>*obarray*<a name="index1443"></a></code> - the object hash table
+<li><code>*standard-input*<a name="index1444"></a></code> - the standard input stream
+<li><code>*standard-output*<a name="index1445"></a></code> - the standard output stream
+<li><code>*error-output*<a name="index1446"></a></code> - the error output stream
+<li><code>*trace-output*<a name="index1447"></a></code> - the trace output stream
+<li><code>*debug-io*<a name="index1448"></a></code> - the debug i/o stream
+<li><code>*breakenable*<a name="index1449"></a></code> - flag controlling entering break loop on errors
+<li><code>*tracelist*<a name="index1450"></a></code> - list of names of functions to trace
+<li><code>*tracenable*<a name="index1451"></a></code> - enable trace back printout on errors
+<li><code>*tracelimit*<a name="index1452"></a></code> - number of levels of trace back information
+<li><code>*evalhook*<a name="index1453"></a></code> - user substitute for the evaluator function
+<li><code>*applyhook*<a name="index1454"></a></code> - (not yet implemented)
+<li><code>*readtable*<a name="index1455"></a></code> - the current readtable
+<li><code>*unbound*<a name="index1456"></a></code> - indicator for unbound symbols
+<li><code>*gc-flag*<a name="index1457"></a></code> - controls the printing of gc messages
+<li><code>*gc-hook*<a name="index1458"></a></code> - function to call after garbage collection
+<li><code>*integer-format*<a name="index1459"></a></code> - format for printing integers ("%d" or "%ld")
+<li><code>*float-format*<a name="index1460"></a></code> - format for printing floats ("%g")
+<li><code>*print-case*<a name="index1461"></a></code> - symbol output case (:upcase or :downcase)
+</ul>
+<p>
+        There are several symbols maintained by the read/eval/print
+        loop.  The symbols <code>+</code>, <code>++</code>, and <code>+++</code> are bound to the most
+        recent three input expressions.  The symbols <code>*</code>, <code>**</code> and <code>***</code>
+        are bound to the most recent three results.  The symbol <code>-</code> is
+        bound to the expression currently being evaluated.  It becomes
+        the value of <code>+</code> at the end of the evaluation.
+<a name = "243"><h3>Evaluation Functions</h3></a><a name="index1462"></a>
+<div style="padding-left: 0em;">
+        <code>eval<a name="index1463"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(eval <tt><i>expr</i></tt>)</code> [LISP] &ndash; evaluate an xlisp expression<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i> &ndash;     the expression to be evaluated</div>
+<div style="padding-left: 2em;">            returns &ndash;     the result of evaluating the expression<br>
+
+</div>
+<br>
+        <code>apply<a name="index1464"></a>(<i>fun</i>, <i>args</i>)</code> [SAL]<br>
+        <code>(apply <tt><i>fun</i></tt> <tt><i>args</i></tt>)</code> [LISP] &ndash; apply a function to a list of arguments<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>fun</i> &ndash;      the function to apply (or function symbol)</div>
+<div style="padding-left: 2em;">            <i>args</i> &ndash;     the argument list</div>
+<div style="padding-left: 2em;">            returns &ndash;    the result of applying the function to the arguments<br>
+
+</div>
+<br>
+        <code>funcall<a name="index1465"></a>(<i>fun</i>, <i>arg</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(funcall <tt><i>fun</i></tt> <tt><i>arg</i></tt><span style="font-style:normal">...</span>)</code> [LISP] &ndash; call a function with arguments<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>fun</i> &ndash;      the function to call (or function symbol)</div>
+<div style="padding-left: 2em;">            <i>arg</i> &ndash;      arguments to pass to the function</div>
+<div style="padding-left: 2em;">            returns &ndash;    the result of calling the function with the arguments<br>
+
+</div>
+<br>
+        <code>quote<a name="index1466"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(quote <tt><i>expr</i></tt>)</code> [LISP] &ndash;  return an expression unevaluated<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to be quoted (quoted)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  <i>expr</i> unevaluated<br>
+
+</div>
+<br>
+        <code>function<a name="index1467"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(function <tt><i>expr</i></tt>)</code> [LISP] &ndash;  get the functional interpretation<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i> &ndash;     the symbol or lambda expression (quoted)</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the functional interpretation<br>
+
+</div>
+<br>
+        <code>backquote<a name="index1468"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(backquote <tt><i>expr</i></tt>)</code> [LISP] &ndash; fill in a template<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i> &ndash;     the template</div>
+<div style="padding-left: 2em;">            returns  &ndash;   a copy of the template with comma and comma-at</div>
+<div style="padding-left: 2em;">             expressions expanded<br>
+
+</div>
+<br>
+        <code>lambda<a name="index1469"></a>(<i>args</i>, <i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(lambda <tt><i>args</i></tt> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP] &ndash; make a function closure<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>args</i> &ndash;     formal argument list (lambda list) (quoted)</div>
+<div style="padding-left: 2em;">            <i>expr</i> &ndash;     expressions of the function body</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the function closure<br>
+
+</div>
+<br>
+        <code>get-lambda-expression<a name="index1470"></a>(<i>closure</i>)</code> [SAL]<br>
+        <code>(get-lambda-expression <tt><i>closure</i></tt>)</code> [LISP] &ndash; get the lambda expression<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>closure</i> &ndash;  the closure</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the original lambda expression<br>
+
+</div>
+<br>
+        <code>macroexpand<a name="index1471"></a>(<i>form</i>)</code> [SAL]<br>
+        <code>(macroexpand <tt><i>form</i></tt>)</code> [LISP] &ndash; recursively expand macro calls<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>form</i> &ndash;     the form to expand</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the macro expansion<br>
+
+</div>
+<br>
+        <code>macroexpand-1<a name="index1472"></a>(<i>form</i>)</code> [SAL]<br>
+        <code>(macroexpand-1 <tt><i>form</i></tt>)</code> [LISP] &ndash; expand a macro call<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>form</i> &ndash;     the macro call form</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the macro expansion<br>
+
+</div>
+
+</div>
+
+<p>
+<a name = "244"><h3>Symbol Functions</h3></a><a name="index1473"></a>
+<div style="padding-left: 0em;">
+        <code>(set<a name="index1474"></a> <tt><i>sym</i></tt> <tt><i>expr</i></tt>)</code> [LISP] &ndash;  set the value of a symbol. Note that in SAL, the function can be accessed as <code>#set</code>.<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i>  &ndash;     the symbol being set</div>
+<div style="padding-left: 2em;">            <i>expr</i> &ndash;     the new value</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the new value<br>
+
+</div>
+<br>
+        <code>setq<a name="index1475"></a>([<i>sym</i>, <i>expr</i>]<span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(setq [<tt><i>sym</i></tt> <tt><i>expr</i></tt>]<span style="font-style:normal">...</span>)</code> [LISP] &ndash;  set the value of a symbol. Note that in SAL, the <code>set</code> command is normally used.<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i>  &ndash;     the symbol being set (quoted)</div>
+<div style="padding-left: 2em;">            <i>expr</i> &ndash;     the new value</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the new value<br>
+
+</div>
+<br>
+        <code>psetq<a name="index1476"></a>([<i>sym</i>, <i>expr</i>]<span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(psetq [<tt><i>sym</i></tt> <tt><i>expr</i></tt>]<span style="font-style:normal">...</span>)</code> [LISP]  &ndash; parallel version of setq<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i>  &ndash;     the symbol being set (quoted)</div>
+<div style="padding-left: 2em;">            <i>expr</i> &ndash;     the new value</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the new value<br>
+
+</div>
+<br>
+        <code>setf<a name="index1477"></a>([<i>place</i>, <i>expr</i>]<span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(setf [<tt><i>place</i></tt> <tt><i>expr</i></tt>]<span style="font-style:normal">...</span>)</code> [LISP]  &ndash; set the value of a field<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>place</i> &ndash;     the field specifier (quoted):<br>
+
+</div><div style="padding-left: 4em;">
+  <i>sym</i> &ndash;                  set value of a symbol</div>
+<div style="padding-left: 4em;">  (car <i>expr</i>)  &ndash;          set car of a cons node</div>
+<div style="padding-left: 4em;">  (cdr <i>expr</i>)  &ndash;          set cdr of a cons node</div>
+<div style="padding-left: 4em;">  (nth <i>n</i> <i>expr</i>) &ndash;       set nth car of a list</div>
+<div style="padding-left: 4em;">  (aref <i>expr</i> <i>n</i>) &ndash;       set nth element of an array</div>
+<div style="padding-left: 4em;">  (get <i>sym</i> <i>prop</i>) &ndash;      set value of a property</div>
+<div style="padding-left: 4em;">  (symbol-value <i>sym</i>) &ndash;   set value of a symbol</div>
+<div style="padding-left: 4em;">  (symbol-function <i>sym</i>) &ndash; set functional value of a symbol</div>
+<div style="padding-left: 4em;">  (symbol-plist <i>sym</i>) &ndash;    set property list of a symbol<br>
+
+</div></div>
+<div style="padding-left: 2em;">        <i>expr</i> &ndash;     the new value</div>
+<div style="padding-left: 2em;">        returns  &ndash;   the new value<br>
+
+</div>
+<br>
+
+        <code>(defun<a name="index1478"></a> <tt><i>sym</i></tt> <tt><i>fargs</i></tt> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; define a function<br>
+        <code>(defmacro<a name="index1479"></a> <tt><i>sym</i></tt> <tt><i>fargs</i></tt> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP] &ndash;  define a macro<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i> &ndash;      symbol being defined (quoted)</div>
+<div style="padding-left: 2em;">            <i>fargs</i> &ndash;     formal argument list (lambda list) (quoted)</div>
+<div style="padding-left: 2em;">            <i>expr</i>  &ndash;    expressions constituting the body of the</div>
+<div style="padding-left: 2em;">                        function (quoted)<br>
+
+            returns   &ndash;  the function symbol<br>
+
+</div>
+<br>
+        <code>gensym<a name="index1480"></a>([<i>tag</i>])</code> [SAL]<br>
+        <code>(gensym [<tt><i>tag</i></tt>])</code> [LISP]  &ndash; generate a symbol<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>tag</i>   &ndash;    string or number</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the new symbol<br>
+
+</div>
+<br>
+<code>intern<a name="index1481"></a>(<i>pname</i>)</code> [SAL]<br>
+        <code>(intern <tt><i>pname</i></tt>)</code> [LISP]  &ndash; make an interned symbol<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>pname</i> &ndash;    the symbol's print name string</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the new symbol<br>
+
+</div>
+<br>
+        <code>make-symbol<a name="index1482"></a>(<i>pname</i>)</code> [SAL]<br>
+        <code>(make-symbol <tt><i>pname</i></tt>)</code> [LISP]  &ndash; make an uninterned symbol<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>pname</i> &ndash;    the symbol's print name string</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the new symbol<br>
+
+</div>
+<br>
+        <code>symbol-name<a name="index1483"></a>(<i>sym</i>)</code> [SAL]<br>
+        <code>(symbol-name <tt><i>sym</i></tt>)</code> [LISP]  &ndash; get the print name of a symbol<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i>   &ndash;    the symbol</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the symbol's print name<br>
+
+</div>
+<br>
+    <code>symbol-value<a name="index1484"></a>(<i>sym</i>)</code> [SAL]<br>
+        <code>(symbol-value <tt><i>sym</i></tt>)</code> [LISP]  &ndash; get the value of a symbol<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i>   &ndash;    the symbol</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the symbol's value<br>
+
+</div>
+<br>
+        <code>symbol-function<a name="index1485"></a>(<i>sym</i>)</code> [SAL]<br>
+        <code>(symbol-function <tt><i>sym</i></tt>)</code> [LISP]  &ndash; get the functional value of a symbol<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i>   &ndash;    the symbol</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the symbol's functional value<br>
+
+</div>
+<br>
+        <code>symbol-plist<a name="index1486"></a>(<i>sym</i>)</code> [SAL]<br>
+        <code>(symbol-plist <tt><i>sym</i></tt>)</code> [LISP]  &ndash; get the property list of a symbol<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i>   &ndash;    the symbol</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the symbol's property list<br>
+
+</div>
+<br>
+        <code>hash<a name="index1487"></a>(<i>sym</i>, <i>n</i>)</code> [SAL]<br>
+        <code>(hash <tt><i>sym</i></tt> <tt><i>n</i></tt>)</code> [LISP]  &ndash; compute the hash index for a symbol<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i>   &ndash;    the symbol or string</div>
+<div style="padding-left: 2em;">            <i>n</i>     &ndash;    the table size (integer)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the hash index (integer)<br>
+
+</div>
+
+</div>
+
+<p>
+<a name = "245"><h3>Property List Functions</h3></a><a name="index1488"></a>
+<div style="padding-left: 0em;">
+        <code>get<a name="index1489"></a>(<i>sym</i>, <i>prop</i>)</code> [SAL]<br>
+        <code>(get <tt><i>sym</i></tt> <tt><i>prop</i></tt>)</code> [LISP]  &ndash; get the value of a property<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i>   &ndash;    the symbol</div>
+<div style="padding-left: 2em;">            <i>prop</i>  &ndash;    the property symbol</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the property value or <code>nil</code><br>
+
+</div>
+<br>
+        <code>putprop<a name="index1490"></a>(<i>sym</i>, <i>val</i>, <i>prop</i>)</code> [SAL]<br>
+        <code>(putprop <tt><i>sym</i></tt> <tt><i>val</i></tt> <tt><i>prop</i></tt>)</code> [LISP]  &ndash; put a property onto a property list<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i>   &ndash;    the symbol</div>
+<div style="padding-left: 2em;">            <i>val</i>   &ndash;    the property value</div>
+<div style="padding-left: 2em;">            <i>prop</i>  &ndash;    the property symbol</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the property value<br>
+
+</div>
+<br>
+        <code>remprop<a name="index1491"></a>(<i>sym</i>, <i>prop</i>)</code> [SAL]<br>
+        <code>(remprop <tt><i>sym</i></tt> <tt><i>prop</i></tt>)</code> [LISP]  &ndash; remove a property<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i>   &ndash;    the symbol</div>
+<div style="padding-left: 2em;">            <i>prop</i>  &ndash;    the property symbol</div>
+<div style="padding-left: 2em;">            returns   &ndash;  <code>nil</code><br>
+
+</div>
+
+</div>
+
+<p>
+<a name = "246"><h3>Array Functions</h3></a><a name="index1492"></a>
+<div style="padding-left: 0em;">
+        <code>aref<a name="index1493"></a>(<i>array</i>, <i>n</i>)</code> [SAL]<br>
+        <code>(aref <tt><i>array</i></tt> <tt><i>n</i></tt>)</code> [LISP]  &ndash; get the nth element of an array<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>array</i> &ndash;    the array</div>
+<div style="padding-left: 2em;">            <i>n</i>     &ndash;    the array index (integer)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the value of the array element<br>
+
+</div>
+<br>
+        <code>make-array<a name="index1494"></a>(<i>size</i>)</code> [SAL]<br>
+        <code>(make-array <tt><i>size</i></tt>)</code> [LISP]  &ndash; make a new array<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>size</i>  &ndash;    the size of the new array (integer)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the new array<br>
+
+</div>
+<br>
+        <code>vector<a name="index1495"></a>(<i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(vector <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; make an initialized vector<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the vector elements</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the new vector<br>
+
+</div>
+
+</div>
+
+<p>
+<a name = "247"><h3>List Functions</h3></a><a name="index1496"></a>
+<div style="padding-left: 0em;">
+        <code>car<a name="index1497"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(car <tt><i>expr</i></tt>)</code> [LISP] &ndash;  return the car of a list node<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the list node</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the car of the list node<br>
+
+</div>
+<br>
+        <code>cdr<a name="index1498"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(cdr <tt><i>expr</i></tt>)</code> [LISP]  &ndash; return the cdr of a list node<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the list node</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the cdr of the list node<br>
+
+</div>
+<br>
+        <code>c<i>xx</i>r(<i>expr</i>)</code> [SAL]<br>
+        <code>(c<i>xx</i>r<a name="index1499"></a> <tt><i>expr</i></tt>)</code> [LISP]  &ndash; all c<i>xx</i>r combinations<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+<br>
+        <code>c<i>xxx</i>r(<i>expr</i>)</code> [SAL]<br>
+        <code>(c<i>xxx</i>r<a name="index1500"></a> <tt><i>expr</i></tt>)</code> [LISP]  &ndash; all c<i>xxx</i>r combinations<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+<br>
+        <code>c<i>xxxx</i>r(<i>expr</i>)</code> [SAL]<br>
+        <code>(c<i>xxxx</i>r<a name="index1501"></a> <tt><i>expr</i></tt>)</code> [LISP]  &ndash; all c<i>xxxx</i>r combinations<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+<br>
+        <code>first<a name="index1502"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(first <tt><i>expr</i></tt>)</code> [LISP]  &ndash;  a synonym for car<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+<br>
+        <code>second<a name="index1503"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(second <tt><i>expr</i></tt>)</code> [LISP]  &ndash; a synonym for cadr<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+<br>
+        <code>third<a name="index1504"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(third <tt><i>expr</i></tt>)</code> [LISP]  &ndash;  a synonym for caddr<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+<br>
+        <code>fourth<a name="index1505"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(fourth <tt><i>expr</i></tt>)</code> [LISP]  &ndash; a synonym for cadddr<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+<br>
+        <code>rest<a name="index1506"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(rest <tt><i>expr</i></tt>)</code> [LISP]  &ndash;   a synonym for cdr<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+<br>
+        <code>cons<a name="index1507"></a>(<i>expr1</i>, <i>expr2</i>)</code> [SAL]<br>
+        <code>(cons <tt><i>expr1</i></tt> <tt><i>expr2</i></tt>)</code> [LISP]  &ndash; construct a new list node<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr1</i> &ndash;    the car of the new list node</div>
+<div style="padding-left: 2em;">            <i>expr2</i> &ndash;    the cdr of the new list node</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the new list node<br>
+
+</div>
+<br>
+        <code>list<a name="index1508"></a>(<i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(list <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; create a list of values<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    expressions to be combined into a list</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the new list<br>
+
+</div>
+<br>
+        <code>append<a name="index1509"></a>(<i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(append <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; append lists<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    lists whose elements are to be appended</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the new list<br>
+
+</div>
+<br>
+        <code>reverse<a name="index1510"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(reverse <tt><i>expr</i></tt>)</code> [LISP]  &ndash; reverse a list<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the list to reverse</div>
+<div style="padding-left: 2em;">            returns   &ndash;  a new list in the reverse order<br>
+
+</div>
+<br>
+        <code>last<a name="index1511"></a>(<i>list</i>)</code> [SAL]<br>
+        <code>(last <tt><i>list</i></tt>)</code> [LISP]  &ndash; return the last list node of a list<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>list</i>  &ndash;    the list</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the last list node in the list<br>
+
+</div>
+<br>
+        <code>member<a name="index1512"></a>(<i>expr</i>, <i>list</i>, test: <i>test</i>, test-not: <i>test-not</i>)</code> [SAL]<br>
+        <code>(member <tt><i>expr</i></tt> <tt><i>list</i></tt> <tt>&amp;key </tt><tt>:test</tt> <tt>:test-not</tt>)</code> [LISP]  &ndash; find an expression in a list<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to find</div>
+<div style="padding-left: 2em;">            <i>list</i>  &ndash;    the list to search</div>
+<div style="padding-left: 2em;">            :test     &ndash;  the test function (defaults to eql)</div>
+<div style="padding-left: 2em;">            :test-not &ndash;  the test function (sense inverted)      </div>
+<div style="padding-left: 2em;">            returns   &ndash;  the remainder of the list starting with the expression<br>
+
+</div>
+<br>
+        <code>assoc<a name="index1513"></a>(<i>expr</i>, <i>alist</i>, test: <i>test</i>, test-not: <i>test-not</i>)</code> [SAL]<br>
+        <code>(assoc <tt><i>expr</i></tt> <tt><i>alist</i></tt> <tt>&amp;key </tt><tt>:test</tt> <tt>:test-not</tt>)</code> [LISP]  &ndash; find an expression in an a-list<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to find</div>
+<div style="padding-left: 2em;">            <i>alist</i> &ndash;    the association list</div>
+<div style="padding-left: 2em;">            :test     &ndash;  the test function (defaults to eql)</div>
+<div style="padding-left: 2em;">            :test-not &ndash;  the test function (sense inverted)      </div>
+<div style="padding-left: 2em;">            returns   &ndash;  the alist entry or <code>nil</code><br>
+
+</div>
+<br>
+        <code>remove<a name="index1514"></a>(<i>expr</i>, <i>list</i>, test: <i>test</i>, test-not: <i>test-not</i>)</code> [SAL]<br>
+        <code>(remove <tt><i>expr</i></tt> <tt><i>list</i></tt> <tt>&amp;key </tt><tt>:test</tt> <tt>:test-not</tt>)</code> [LISP]  &ndash; remove elements from a list<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the element to remove</div>
+<div style="padding-left: 2em;">            <i>list</i>  &ndash;    the list</div>
+<div style="padding-left: 2em;">            :test     &ndash;  the test function (defaults to eql)</div>
+<div style="padding-left: 2em;">            :test-not &ndash;  the test function (sense inverted)      </div>
+<div style="padding-left: 2em;">            returns   &ndash;  copy of list with matching expressions removed<br>
+
+</div>
+<br>
+        <code>remove-if<a name="index1515"></a>(<i>test</i>, <i>list</i>)</code> [SAL]<br>
+        <code>(remove-if <tt><i>test</i></tt> <tt><i>list</i></tt>)</code> [LISP]  &ndash; remove elements that pass test<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>test</i>  &ndash;    the test predicate</div>
+<div style="padding-left: 2em;">            <i>list</i>  &ndash;    the list</div>
+<div style="padding-left: 2em;">            returns   &ndash;  copy of list with matching elements removed<br>
+
+</div>
+<br>
+        <code>remove-if-not<a name="index1516"></a>(<i>test</i>, <i>list</i>)</code> [SAL]<br>
+        <code>(remove-if-not <tt><i>test</i></tt> <tt><i>list</i></tt>)</code> [LISP]  &ndash; remove elements that fail test<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>test</i>  &ndash;    the test predicate</div>
+<div style="padding-left: 2em;">            <i>list</i>  &ndash;    the list</div>
+<div style="padding-left: 2em;">            returns   &ndash;  copy of list with non-matching elements removed<br>
+
+</div>
+<br>
+        <code>length<a name="index1517"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(length <tt><i>expr</i></tt>)</code> [LISP]  &ndash; find the length of a list, vector or string<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the list, vector or string</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the length of the list, vector or string<br>
+
+</div>
+<br>
+        <code>nth<a name="index1518"></a>(<i>n</i>, <i>list</i>)</code> [SAL]<br>
+        <code>(nth <tt><i>n</i></tt> <tt><i>list</i></tt>)</code> [LISP]  &ndash; return the nth element of a list<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>n</i>     &ndash;    the number of the element to return (zero origin)</div>
+<div style="padding-left: 2em;">            <i>list</i>  &ndash;    the list</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the nth element or <code>nil</code> if the list isn't that long<br>
+
+</div>
+<br>
+        <code>nthcdr<a name="index1519"></a>(<i>n</i>, <i>list</i>)</code> [SAL]<br>
+        <code>(nthcdr <tt><i>n</i></tt> <tt><i>list</i></tt>)</code> [LISP]  &ndash; return the nth cdr of a list<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>n</i>     &ndash;    the number of the element to return (zero origin)</div>
+<div style="padding-left: 2em;">            <i>list</i>  &ndash;    the list</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the nth cdr or <code>nil</code> if the list isn't that long<br>
+
+</div>
+<br>
+        <code>mapc<a name="index1520"></a>(<i>fcn</i>, <i>list1</i>, <i>list</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(mapc <tt><i>fcn</i></tt> <tt><i>list1</i></tt> <tt><i>list</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; apply function to successive cars<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>fcn</i>   &ndash;    the function or function name</div>
+<div style="padding-left: 2em;">            <i>listn</i> &ndash;    a list for each argument of the function</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the first list of arguments<br>
+
+</div>
+<br>
+        <code>mapcar<a name="index1521"></a>(<i>fcn</i>, <i>list1</i>, <i>list</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(mapcar <tt><i>fcn</i></tt> <tt><i>list1</i></tt> <tt><i>list</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; apply function to successive cars<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>fcn</i>   &ndash;    the function or function name</div>
+<div style="padding-left: 2em;">            <i>listn</i> &ndash;    a list for each argument of the function</div>
+<div style="padding-left: 2em;">            returns   &ndash;  a list of the values returned<br>
+
+</div>
+<br>
+        <code>mapl<a name="index1522"></a>(<i>fcn</i>, <i>list1</i>, <i>list</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(mapl <tt><i>fcn</i></tt> <tt><i>list1</i></tt> <tt><i>list</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; apply function to successive cdrs<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>fcn</i>   &ndash;    the function or function name</div>
+<div style="padding-left: 2em;">            <i>listn</i> &ndash;    a list for each argument of the function</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the first list of arguments<br>
+
+</div>
+<br>
+        <code>maplist<a name="index1523"></a>(<i>fcn</i>, <i>list1</i>, <i>list</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(maplist <tt><i>fcn</i></tt> <tt><i>list1</i></tt> <tt><i>list</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; apply function to successive cdrs<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>fcn</i>   &ndash;    the function or function name</div>
+<div style="padding-left: 2em;">            <i>listn</i> &ndash;    a list for each argument of the function</div>
+<div style="padding-left: 2em;">            returns   &ndash;  a list of the values returned<br>
+
+</div>
+<br>
+       <code>subst<a name="index1524"></a>(<i>to</i>, <i>from</i>, <i>expr</i>, test: <i>test</i>, test-not: <i>test-not</i>)</code> [SAL]<br>
+        <code>(subst <tt><i>to</i></tt> <tt><i>from</i></tt> <tt><i>expr</i></tt> <tt>&amp;key </tt><tt>:test</tt> <tt>:test-not</tt>)</code> [LISP]  &ndash; substitute expressions<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>to</i>    &ndash;    the new expression</div>
+<div style="padding-left: 2em;">            <i>from</i>  &ndash;    the old expression</div>
+<div style="padding-left: 2em;">            <i>expr</i>  &ndash;    the expression in which to do the substitutions</div>
+<div style="padding-left: 2em;">            :test     &ndash;  the test function (defaults to eql)</div>
+<div style="padding-left: 2em;">            :test-not &ndash;  the test function (sense inverted)      </div>
+<div style="padding-left: 2em;">            returns   &ndash;  the expression with substitutions<br>
+
+</div>
+<br>
+        <code>sublis<a name="index1525"></a>(<i>alist</i>, <i>expr</i>, test: <i>test</i>, test-not: <i>test-not</i>)</code> [SAL]<br>
+        <code>(sublis <tt><i>alist</i></tt> <tt><i>expr</i></tt> <tt>&amp;key </tt><tt>:test</tt> <tt>:test-not</tt>)</code> [LISP]  &ndash; substitute with an a-list<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>alist</i> &ndash;    the association list</div>
+<div style="padding-left: 2em;">            <i>expr</i>  &ndash;    the expression in which to do the substitutions</div>
+<div style="padding-left: 2em;">            :test     &ndash;  the test function (defaults to eql)</div>
+<div style="padding-left: 2em;">            :test-not &ndash;  the test function (sense inverted)      </div>
+<div style="padding-left: 2em;">            returns   &ndash;  the expression with substitutions<br>
+
+</div>
+
+</div>
+
+<p>
+<a name = "248"><h3>Destructive List Functions</h3></a><a name="index1526"></a>
+<div style="padding-left: 0em;">
+        <code>rplaca<a name="index1527"></a>(<i>list</i>, <i>expr</i>)</code> [SAL]<br>
+        <code>(rplaca <tt><i>list</i></tt> <tt><i>expr</i></tt>)</code> [LISP]  &ndash; replace the car of a list node<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>list</i> &ndash;     the list node</div>
+<div style="padding-left: 2em;">            <i>expr</i> &ndash;     the new value for the car of the list node</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the list node after updating the car<br>
+
+</div>
+<br>
+        <code>rplacd<a name="index1528"></a>(<i>list</i>, <i>expr</i>)</code> [SAL]<br>
+        <code>(rplacd <tt><i>list</i></tt> <tt><i>expr</i></tt>)</code> [LISP]  &ndash; replace the cdr of a list node<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>list</i> &ndash;     the list node</div>
+<div style="padding-left: 2em;">            <i>expr</i> &ndash;     the new value for the cdr of the list node</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the list node after updating the cdr<br>
+
+</div>
+<br>
+        <code>nconc<a name="index1529"></a>(<i>list</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(nconc <tt><i>list</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; destructively concatenate lists<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>list</i> &ndash;     lists to concatenate</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the result of concatenating the lists<br>
+
+</div>
+<br>
+        <code>delete<a name="index1530"></a>(<i>expr</i>, test: <i>test</i>, test-not: <i>test-not</i>)</code> [SAL]<br>
+        <code>(delete <tt><i>expr</i></tt> <tt>&amp;key </tt><tt>:test</tt> <tt>:test-not</tt>)</code> [LISP]  &ndash; delete elements from a list<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i> &ndash;     the element to delete</div>
+<div style="padding-left: 2em;">            <i>list</i> &ndash;     the list</div>
+<div style="padding-left: 2em;">            :test    &ndash;   the test function (defaults to eql)</div>
+<div style="padding-left: 2em;">            :test-not &ndash;   the test function (sense inverted)      </div>
+<div style="padding-left: 2em;">            returns   &ndash;  the list with the matching expressions deleted<br>
+
+</div>
+<br>
+        <code>delete-if<a name="index1531"></a>(<i>test</i>, <i>list</i>)</code> [SAL]<br>
+        <code>(delete-if) <tt><i>test</i></tt> <tt><i>list</i></tt>)</code> [LISP]  &ndash; delete elements that pass test<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>test</i>  &ndash;    the test predicate</div>
+<div style="padding-left: 2em;">            <i>list</i>  &ndash;    the list</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the list with matching elements deleted<br>
+
+</div>
+<br>
+        <code>delete-if-not<a name="index1532"></a>(<i>test</i>, <i>list</i>)</code> [SAL]<br>
+        <code>(delete-if-not) <tt><i>test</i></tt> <tt><i>list</i></tt>)</code> [LISP]  &ndash; delete elements that fail test<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>test</i>  &ndash;    the test predicate</div>
+<div style="padding-left: 2em;">            <i>list</i>  &ndash;    the list</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the list with non-matching elements deleted<br>
+
+</div>
+<br>
+        <code>sort<a name="index1533"></a>(<i>list</i>, <i>test</i>)</code> [SAL]<br>
+        <code>(sort <tt><i>list</i></tt> <tt><i>test</i></tt>)</code> [LISP]  &ndash; sort a list<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>list</i>  &ndash;    the list to sort</div>
+<div style="padding-left: 2em;">            <i>test</i>  &ndash;    the comparison function</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the sorted list</div>
+<div style="padding-left: 2em;">          Note: The comparison function should have two parameters and return true if the first parameter should come before the second parameter in the sorted result. For a list of numbers, built-in comparison functions can be used, e.g. <tt>(sort '(3 2 1) #'&lt;)</tt> returns <tt>(1 2 3)</tt>. To sort a list of lists by the first element of each list, you can write a function to access the keys and compare them, e.g. <br>
+
+ <tt>(sort '((3 c) (2 b) (1 a)) #'(lambda (x y) (&lt; (car x) (car y))))</tt> returns<br>
+
+ <tt>((1 A) (2 B) (3 C))</tt>. In SAL, you could write<br>
+
+ <tt>function my-sort(a, b) return first(a) &lt; first(b)</tt><br>
+
+ <tt>print sort({{3 c} {2 b} {1 a}}, quote(my-sort))</tt>, which will print<br>
+
+ <tt>{{1 A} {2 B} {3 C}}</tt>.</div>
+<div style="padding-left: 2em;"></div>
+<br>
+
+</div>
+
+<p>
+<a name = "249"><h3>Predicate Functions</h3></a><a name="index1534"></a>
+<div style="padding-left: 0em;">
+	<code>atom<a name="index1535"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(atom <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this an atom?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to check</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the value is an atom, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>symbolp<a name="index1536"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(symbolp <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this a symbol?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to check</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the expression is a symbol, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>numberp<a name="index1537"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(numberp <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this a number?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to check</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the expression is a number, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>null<a name="index1538"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(null <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this an empty list?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the list to check</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the list is empty, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>not<a name="index1539"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(not <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this false?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to check</div>
+<div style="padding-left: 2em;">            return    &ndash; <code>t</code> if the value is <code>nil</code>, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>listp<a name="index1540"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(listp <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this a list?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to check</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the value is a cons or <code>nil</code>, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>endp<a name="index1541"></a>(<i>list</i>)</code> [SAL]<br>
+        <code>(endp <tt><i>list</i></tt>)</code> [LISP]  &ndash; is this the end of a list<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>list</i>  &ndash;    the list</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the value is <code>nil</code>, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>consp<a name="index1542"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(consp <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this a non-empty list?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to check</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the value is a cons, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>integerp<a name="index1543"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(integerp <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this an integer?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to check</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the value is an integer, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>floatp<a name="index1544"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(floatp <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this a float?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to check</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the value is a float, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>stringp<a name="index1545"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(stringp <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this a string?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to check</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the value is a string, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>characterp<a name="index1546"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(characterp <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this a character?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to check</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the value is a character, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>arrayp<a name="index1547"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(arrayp <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this an array?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to check</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the value is an array, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>streamp<a name="index1548"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(streamp <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this a stream?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to check</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the value is a stream, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>objectp<a name="index1549"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(objectp <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this an object?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to check</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the value is an object, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>filep<a name="index1550"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(filep <tt><i>expr</i></tt>)</code> [LISP] <a href = "foot.html#foot7">(Footnote 7)</a>   &ndash; is this a file? <br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to check</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the value is an object, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>boundp<a name="index1551"></a>(<i>sym</i>)</code> [SAL]<br>
+        <code>(boundp <tt><i>sym</i></tt>)</code> [LISP]  &ndash; is a value bound to this symbol?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i>   &ndash;    the symbol</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if a value is bound to the symbol, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>fboundp<a name="index1552"></a>(<i>sym</i>)</code> [SAL]<br>
+        <code>(fboundp <tt><i>sym</i></tt>)</code> [LISP]  &ndash; is a functional value bound to this symbol?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i>   &ndash;    the symbol</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if a functional value is bound to the symbol,</div>
+<div style="padding-left: 2em;">                        <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>minusp<a name="index1553"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(minusp <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this number negative?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the number to test</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the number is negative, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>zerop<a name="index1554"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(zerop <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this number zero?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the number to test</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the number is zero, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>plusp<a name="index1555"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(plusp <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this number positive?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the number to test</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the number is positive, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>evenp<a name="index1556"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(evenp <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this integer even?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the integer to test</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the integer is even, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>oddp<a name="index1557"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(oddp <tt><i>expr</i></tt>)</code> [LISP]  &ndash; is this integer odd?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the integer to test</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the integer is odd, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>eq<a name="index1558"></a>(<i>expr1</i>, <i>expr2</i>)</code> [SAL]<br>
+        <code>(eq <tt><i>expr1</i></tt> <tt><i>expr2</i></tt>)</code> [LISP]  &ndash; are the expressions identical?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr1</i> &ndash;    the first expression</div>
+<div style="padding-left: 2em;">            <i>expr2</i> &ndash;    the second expression</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if they are equal, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+<code>eql<a name="index1559"></a>(<i>expr1</i>, <i>expr2</i>)</code> [SAL]<br>
+        <code>(eql <tt><i>expr1</i></tt> <tt><i>expr2</i></tt>)</code> [LISP]  &ndash; are the expressions identical? (<code>eql</code> "works" with all numbers, but a FIXNUM is never eql to a FLONUM, i.e. <code>(eql 1 1.0)</code> is false.)<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr1</i> &ndash;    the first expression</div>
+<div style="padding-left: 2em;">            <i>expr2</i> &ndash;    the second expression</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if they are equal, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>equal<a name="index1560"></a>(<i>expr1</i>, <i>expr2</i>)</code> [SAL]<br>
+        <code>(equal <tt><i>expr1</i></tt> <tt><i>expr2</i></tt>)</code> [LISP]  &ndash; are the expressions equal?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr1</i> &ndash;    the first expression</div>
+<div style="padding-left: 2em;">            <i>expr2</i> &ndash;    the second expression</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if they are equal, <code>nil</code> otherwise<br>
+
+</div>
+
+</div>
+
+<p>
+<a name = "250"><h3>Control Constructs</h3></a><a name="index1561"></a>
+<div style="padding-left: 0em;">
+        <code>(cond<a name="index1562"></a> <tt><i>pair</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; evaluate conditionally
+</div><div style="padding-left: 2em;">
+            <i>pair</i>  &ndash;    pair consisting of:<br>
+
+</div><div style="padding-left: 4em;">
+                            (<i>pred</i> <i>expr</i>...)<br>
+
+</div></div>
+<div style="padding-left: 2em;">                          where:<br>
+
+</div><div style="padding-left: 4em;">
+                            <i>pred</i> &ndash;     is a predicate expression</div>
+<div style="padding-left: 4em;">                            <i>expr</i> &ndash;     evaluated if the predicate<br>
+
+ is not <code>nil</code><br>
+
+</div></div>
+<div style="padding-left: 2em;">returns  &ndash;   the value of the first expression whose predicate is not <br>
+
+<code>nil</code><br>
+
+</div>
+<br>
+        <code>and<a name="index1563"></a>(<i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(and <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; the logical and of a list of expressions<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i> &ndash;     the expressions to be anded</div>
+<div style="padding-left: 2em;">            returns  &ndash;   <code>nil</code> if any expression evaluates to <code>nil</code>,<br>
+
+                        otherwise the value of the last expression<br>
+
+                        (evaluation of expressions stops after the first<br>
+
+                         expression that evaluates to <code>nil</code>)<br>
+
+</div>
+<br>
+        <code>or<a name="index1564"></a>(<i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(or <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; the logical or of a list of expressions<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i> &ndash;     the expressions to be ored</div>
+<div style="padding-left: 2em;">            returns  &ndash;   <code>nil</code> if all expressions evaluate to <code>nil</code>,<br>
+
+                  otherwise the value of the first non-<code>nil</code> expression<br>
+
+                        (evaluation of expressions stops after the first<br>
+
+                         expression that does not evaluate to <code>nil</code>)<br>
+
+</div>
+<br>
+        <code>(if<a name="index1565"></a> <tt><i>texpr</i></tt> <tt><i>expr1</i></tt> [<tt><i>expr2</i></tt>])</code> [LISP]  &ndash; evaluate expressions conditionally. Note that the SAL conditional expression syntax is <code>#?(<i>test</i>, <i>iftrue-expression</i>, <i>iffalse-expression</i>)</code>, but <code>#if</code> may be used instead of <code>#?</code>. Either form may omit the third argument, which defaults to <code>nil</code>.<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>texpr</i> &ndash;    the test expression</div>
+<div style="padding-left: 2em;">            <i>expr1</i> &ndash;    the expression to be evaluated if texpr is non-<code>nil</code></div>
+<div style="padding-left: 2em;">            <i>expr2</i> &ndash;    the expression to be evaluated if texpr is <code>nil</code></div>
+<div style="padding-left: 2em;">            returns   &ndash;  the value of the selected expression.<br>
+
+</div>
+<br>
+        <code>when<a name="index1566"></a>(<i>texpr</i>, <i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(when <tt><i>texpr</i></tt> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; evaluate only when a condition is true<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>texpr</i> &ndash;    the test expression</div>
+<div style="padding-left: 2em;">            <i>expr</i>  &ndash;    the expression(s) to be evaluated if texpr is non-<code>nil</code></div>
+<div style="padding-left: 2em;">            returns &ndash; the value of the last expression or <code>nil</code><br>
+
+</div>
+<br>
+        <code>unless<a name="index1567"></a>(<i>texpr</i>, <i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(unless <tt><i>texpr</i></tt> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; evaluate only when a condition is false<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>texpr</i> &ndash;    the test expression</div>
+<div style="padding-left: 2em;">            <i>expr</i>  &ndash;    the expression(s) to be evaluated if texpr is <code>nil</code></div>
+<div style="padding-left: 2em;">            returns   &ndash;  the value of the last expression or <code>nil</code><br>
+
+</div>
+<br>
+          <code>(case<a name="index1568"></a> <tt><i>expr</i></tt> <tt><i>case</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; select by case
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the selection expression</div>
+<div style="padding-left: 2em;">            <i>case</i>  &ndash;    pair consisting of:<br>
+
+</div><div style="padding-left: 4em;">
+                            (<i>value</i> <i>expr</i>...)<br>
+
+</div></div>
+<div style="padding-left: 2em;">                          where:<br>
+
+</div><div style="padding-left: 4em;">
+                            <i>value</i> &ndash;     is a single expression or a list of<br>
+
+                                        expressions (unevaluated)</div>
+<div style="padding-left: 4em;">                            <i>expr</i>  &ndash;    are expressions to execute if the<br>
+
+                                        case matches<br>
+
+</div></div>
+<div style="padding-left: 2em;">            returns &ndash;     the value of the last expression of the matching case<br>
+
+</div>
+
+
+       <code>(let<a name="index1569"></a> (<tt><i>binding</i></tt><span style="font-style:normal">...</span>) <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; create local bindings<br>
+<br>
+
+        <code>(let*<a name="index1570"></a> (<tt><i>binding</i></tt><span style="font-style:normal">...</span>) <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; let with sequential binding<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>binding</i> &ndash;   the variable bindings each of which is either:<br>
+
+</div><div style="padding-left: 4em;">
+                        1)  a symbol (which is initialized to <code>nil</code>)</div>
+<div style="padding-left: 4em;">                        2)  a list whose car is a symbol and whose cadr<br>
+
+                                is an initialization expression<br>
+
+</div></div>
+<div style="padding-left: 2em;">            <i>expr</i> &ndash;     the expressions to be evaluated</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the value of the last expression<br>
+
+</div>
+
+
+        <code>(flet<a name="index1571"></a> (<tt><i>binding</i></tt><span style="font-style:normal">...</span>) <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; create local functions<br>
+<br>
+
+        <code>(labels<a name="index1572"></a> (<tt><i>binding</i></tt><span style="font-style:normal">...</span>) <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP] &ndash;  flet with recursive functions<br>
+<br>
+
+        <code>(macrolet<a name="index1573"></a> (<tt><i>binding</i></tt><span style="font-style:normal">...</span>) <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP] &ndash;  create local macros<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>binding</i> &ndash;  the function bindings each of which is:<br>
+
+</div><div style="padding-left: 4em;">
+                          (<i>sym</i> <i>fargs</i> <i>expr</i>...)<br>
+
+</div></div>
+<div style="padding-left: 2em;">                        where:<br>
+
+</div><div style="padding-left: 4em;">
+                            <i>sym</i> &ndash;      the function/macro name</div>
+<div style="padding-left: 4em;">                            <i>fargs</i> &ndash;     formal argument list (lambda list)</div>
+<div style="padding-left: 4em;">                            <i>expr</i>  &ndash;    expressions constituting the body of<br>
+
+                                        the function/macro<br>
+
+</div></div>
+<div style="padding-left: 2em;">            <i>expr</i> &ndash;     the expressions to be evaluated</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the value of the last expression<br>
+
+</div>
+<br>
+        <code>catch<a name="index1574"></a>(<i>sym</i>, <i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(catch <tt><i>sym</i></tt> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; evaluate expressions and catch throws<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i>  &ndash;     the catch tag</div>
+<div style="padding-left: 2em;">            <i>expr</i> &ndash;     expressions to evaluate</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the value of the last expression the throw expression<br>
+
+</div>
+<br>
+        <code>throw<a name="index1575"></a>(<i>sym</i> [, <i>expr</i>])</code> [SAL]<br>
+        <code>(throw <tt><i>sym</i></tt> [<tt><i>expr</i></tt>])</code> [LISP]  &ndash; throw to a catch<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i>  &ndash;     the catch tag</div>
+<div style="padding-left: 2em;">            <i>expr</i> &ndash;     the value for the catch to return (defaults to <code>nil</code>)</div>
+<div style="padding-left: 2em;">            returns  &ndash;   never returns<br>
+
+</div>
+<br>
+        <code>unwind-protect<a name="index1576"></a>(<i>expr</i>, <i>cexpr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(unwind-protect <tt><i>expr</i></tt> <tt><i>cexpr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; protect evaluation of an expression<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i> &ndash;     the expression to protect</div>
+<div style="padding-left: 2em;">            <i>cexpr</i> &ndash;     the cleanup expressions</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the value of the expression<br>
+</div>
+<div style="padding-left: 2em;">          Note:  unwind-protect guarantees to execute the cleanup expressions<br>
+
+                 even if a non-local exit terminates the evaluation of the<br>
+
+                 protected expression<br>
+
+</div>
+
+</div>
+
+<p>
+<a name = "251"><h3>Looping Constructs</h3></a><a name="index1577"></a>
+<div style="padding-left: 0em;">
+        <code>(loop<a name="index1578"></a> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; basic looping form
+</div><div style="padding-left: 2em;">
+            <i>expr</i> &ndash;     the body of the loop</div>
+<div style="padding-left: 2em;">            returns  &ndash;   never returns (must use non-local exit)<br>
+
+</div>
+
+
+        <code>(do<a name="index1579"></a> (<tt><i>binding</i></tt><span style="font-style:normal">...</span>) (<tt><i>texpr</i></tt> <tt><i>rexpr</i></tt><span style="font-style:normal">...</span>) <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]<br>
+
+
+        <code>(do*<a name="index1580"></a> (<tt><i>binding</i></tt><span style="font-style:normal">...</span>) (<tt><i>texpr</i></tt> <tt><i>rexpr</i></tt><span style="font-style:normal">...</span>) <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>binding</i> &ndash;  the variable bindings each of which is either:<br>
+
+</div><div style="padding-left: 4em;">
+                        1)  a symbol (which is initialized to <code>nil</code>)</div>
+<div style="padding-left: 4em;">                        2)  a list of the form: (<i>sym</i> <i>init</i> [<i>step</i>])<br>
+
+                            where:<br>
+
+</div><div style="padding-left: 6em;">
+                                <i>sym</i> &ndash; is the symbol to bind</div>
+<div style="padding-left: 6em;">                                <i>init</i> &ndash; is the initial value of the symbol</div>
+<div style="padding-left: 6em;">                                <i>step</i> &ndash; is a step expression<br>
+
+</div></div></div>
+<div style="padding-left: 2em;">            <i>texpr</i> &ndash;    the termination test expression</div>
+<div style="padding-left: 2em;">            <i>rexpr</i> &ndash;    result expressions (the default is <code>nil</code>)</div>
+<div style="padding-left: 2em;">            <i>expr</i>  &ndash;    the body of the loop (treated like an implicit prog)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the value of the last result expression<br>
+
+</div>
+<br>
+    <code>(dolist<a name="index1581"></a> (<tt><i>sym</i></tt> <tt><i>expr</i></tt> [<tt><i>rexpr</i></tt>]) <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; loop through a list
+</div><div style="padding-left: 2em;">
+            <i>sym</i>   &ndash;    the symbol to bind to each list element</div>
+<div style="padding-left: 2em;">            <i>expr</i>  &ndash;    the list expression</div>
+<div style="padding-left: 2em;">            <i>rexpr</i> &ndash;    the result expression (the default is <code>nil</code>)</div>
+<div style="padding-left: 2em;">            <i>expr</i>  &ndash;    the body of the loop (treated like an implicit prog)<br>
+
+</div>
+<br>
+        <code>(dotimes<a name="index1582"></a> (<tt><i>sym</i></tt> <tt><i>expr</i></tt> [<tt><i>rexpr</i></tt>]) <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; loop from zero to n-1
+</div><div style="padding-left: 2em;">
+            <i>sym</i>   &ndash;    the symbol to bind to each value from 0 to n-1</div>
+<div style="padding-left: 2em;">            <i>expr</i>  &ndash;    the number of times to loop</div>
+<div style="padding-left: 2em;">            <i>rexpr</i> &ndash;    the result expression (the default is <code>nil</code>)</div>
+<div style="padding-left: 2em;">            <i>expr</i>  &ndash;    the body of the loop (treated like an implicit prog)<br>
+
+</div>
+
+</div>
+
+<p>
+<a name = "252"><h3>The Program Feature</h3></a><a name="index1583"></a>
+<div style="padding-left: 0em;">
+
+<code>(prog<a name="index1584"></a> (<tt><i>binding</i></tt><span style="font-style:normal">...</span>) <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; the program feature<br>
+<br>
+
+<code>(prog*<a name="index1585"></a> (<tt><i>binding</i></tt><span style="font-style:normal">...</span>) <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; prog with sequential binding<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>binding</i> &ndash;  the variable bindings each of which is either:<br>
+
+</div><div style="padding-left: 4em;">
+                        1)  a symbol (which is initialized to <code>nil</code>)</div>
+<div style="padding-left: 4em;">                        2)  a list whose car is a symbol and whose cadr<br>
+
+                                is an initialization expression<br>
+
+</div></div>
+<div style="padding-left: 2em;">            <i>expr</i>  &ndash;    expressions to evaluate or tags (symbols)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  <code>nil</code> or the argument passed to the return function<br>
+
+</div>
+<br>
+        <code>block(<i>name</i>, <i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(block<a name="index1586"></a> <tt><i>name</i></tt> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; named block<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>name</i>  &ndash;    the block name (symbol)</div>
+<div style="padding-left: 2em;">            <i>expr</i>  &ndash;    the block body</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the value of the last expression<br>
+
+</div>
+<br>
+        <code>(return<a name="index1587"></a> [<tt><i>expr</i></tt>])</code> [LISP]  &ndash; cause a prog construct to return a value
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the value (defaults to <code>nil</code>)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  never returns<br>
+
+</div>
+<br>
+        <code>return-from<a name="index1588"></a>(<i>name</i> [, <i>value</i>])</code> [SAL]<br>
+        <code>(return-from <tt><i>name</i></tt> [<tt><i>value</i></tt>])</code> [LISP]  &ndash; return from a named block<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>name</i>  &ndash;    the block name (symbol)</div>
+<div style="padding-left: 2em;">            <i>value</i> &ndash;    the value to return (defaults to <code>nil</code>)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  never returns<br>
+
+</div>
+<br>
+        <code>tagbody<a name="index1589"></a>(<i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(tagbody <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; block with labels<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    expression(s) to evaluate or tags (symbols)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  <code>nil</code><br>
+
+</div>
+<br>
+        <code>go<a name="index1590"></a>(<i>sym</i>)</code> [SAL]<br>
+        <code>(go <tt><i>sym</i></tt>)</code> [LISP]  &ndash; go to a tag within a tagbody or prog<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i>   &ndash;    the tag (quoted)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  never returns<br>
+
+</div>
+<br>
+        <code>(progv<a name="index1591"></a> <tt><i>slist</i></tt> <tt><i>vlist</i></tt> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; dynamically bind symbols
+</div><div style="padding-left: 2em;">
+            <i>slist</i> &ndash;    list of symbols</div>
+<div style="padding-left: 2em;">            <i>vlist</i> &ndash;    list of values to bind to the symbols</div>
+<div style="padding-left: 2em;">            <i>expr</i>  &ndash;    expression(s) to evaluate</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the value of the last expression<br>
+
+</div>
+<br>
+        <code>prog1(<i>expr1</i>, <i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(prog1<a name="index1592"></a> <tt><i>expr1</i></tt> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; execute expressions sequentially<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr1</i> &ndash;    the first expression to evaluate</div>
+<div style="padding-left: 2em;">            <i>expr</i>  &ndash;    the remaining expressions to evaluate</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the value of the first expression<br>
+
+</div>
+<br>
+        <code>prog2(<i>expr1</i>, <i>expr2</i>, <i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(prog2<a name="index1593"></a> <tt><i>expr1</i></tt> <tt><i>expr2</i></tt> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; execute expressions sequentially<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr1</i> &ndash;    the first expression to evaluate</div>
+<div style="padding-left: 2em;">            <i>expr2</i> &ndash;    the second expression to evaluate</div>
+<div style="padding-left: 2em;">            <i>expr</i>  &ndash;    the remaining expressions to evaluate</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the value of the second expression<br>
+
+</div>
+<br>
+        <code>progn(<i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(progn<a name="index1594"></a> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; execute expressions sequentially<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expressions to evaluate</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the value of the last expression (or <code>nil</code>)<br>
+
+</div>
+
+</div>
+
+<p>
+<a name = "253"><h3>Debugging and Error Handling</h3></a><a name="index1595"></a><a name="index1596"></a>
+<div style="padding-left: 0em;">
+        <code>trace<a name="index1597"></a>(<i>sym</i>)</code> [SAL]<br>
+        <code>(trace <tt><i>sym</i></tt>)</code> [LISP]  &ndash; add a function to the trace list<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i>   &ndash;    the function to add (quoted)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the trace list<br>
+
+</div>
+<br>
+        <code>untrace<a name="index1598"></a>(<i>sym</i>)</code> [SAL]<br>
+        <code>(untrace <tt><i>sym</i></tt>)</code> [LISP]  &ndash; remove a function from the trace list<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>sym</i>   &ndash;    the function to remove (quoted)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the trace list<br>
+
+</div>
+<br>
+        <code>error<a name="index1599"></a>(<i>emsg</i> [, <i>arg</i>])</code> [SAL]<br>
+        <code>(error <tt><i>emsg</i></tt> [<tt><i>arg</i></tt>])</code> [LISP]  &ndash; signal a non-correctable error<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>emsg</i>  &ndash;    the error message string</div>
+<div style="padding-left: 2em;">            <i>arg</i>   &ndash;    the argument expression (printed after the message)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  never returns<br>
+
+</div>
+<br>
+        <code>cerror<a name="index1600"></a>(<i>cmsg</i>, <i>emsg</i> [, <i>arg</i>])</code> [SAL]<br>
+        <code>(cerror <tt><i>cmsg</i></tt> <tt><i>emsg</i></tt> [<tt><i>arg</i></tt>])</code> [LISP]  &ndash; signal a correctable error<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>cmsg</i>  &ndash;    the continue message string</div>
+<div style="padding-left: 2em;">            <i>emsg</i>  &ndash;    the error message string</div>
+<div style="padding-left: 2em;">            <i>arg</i>   &ndash;    the argument expression (printed after the message)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  <code>nil</code> when continued from the break loop<br>
+
+</div>
+<br>
+        <code>break<a name="index1601"></a>([<i>bmsg</i> [, <i>arg</i>]])</code> [SAL]<br>
+        <code>(break [<tt><i>bmsg</i></tt> [<tt><i>arg</i></tt>]])</code> [LISP]  &ndash; enter a break loop<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>bmsg</i>  &ndash;    the break message string (defaults to <code>**break**</code>)</div>
+<div style="padding-left: 2em;">            <i>arg</i>   &ndash;    the argument expression (printed after the message)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  <code>nil</code> when continued from the break loop<br>
+
+</div>
+<br>
+        <code>(clean-up<a name="index1602"></a>)</code> [LISP]  &ndash; clean-up after an error
+</div><div style="padding-left: 2em;">
+            returns   &ndash;  never returns<br>
+
+</div>
+<br>
+        <code>(top-level<a name="index1603"></a>)</code> [LISP]  &ndash; clean-up after an error and return to the top level
+</div><div style="padding-left: 2em;">
+            returns   &ndash;  never returns<br>
+
+</div>
+<br>
+        <code>(continue<a name="index1604"></a>)</code> [LISP]  &ndash; continue from a correctable error
+</div><div style="padding-left: 2em;">
+            returns   &ndash;  never returns<br>
+
+</div>
+<br>
+        <code>(errset<a name="index1605"></a> <tt><i>expr</i></tt> [<tt><i>pflag</i></tt>])</code> [LISP]  &ndash; trap errors
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to execute</div>
+<div style="padding-left: 2em;">            <i>pflag</i> &ndash;    flag to control printing of the error message</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the value of the last expression consed with <code>nil</code></div>
+<div style="padding-left: 2em;">                        or <code>nil</code> on error<br>
+
+</div>
+<br>
+        <code>(baktrace<a name="index1606"></a><a name="index1607"></a><a name="index1608"></a> [<tt><i>n</i></tt>])</code> [LISP]  &ndash; print n levels of trace back information
+</div><div style="padding-left: 2em;">
+            <i>n</i>     &ndash;    the number of levels (defaults to all levels)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  <code>nil</code><br>
+
+</div>
+<br>
+        <code>(evalhook<a name="index1609"></a> <tt><i>expr</i></tt> <tt><i>ehook</i></tt> <tt><i>ahook</i></tt> [<tt><i>env</i></tt>])</code> [LISP]  &ndash; evaluate with hooks
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression to evaluate</div>
+<div style="padding-left: 2em;">            <i>ehook</i> &ndash;    the value for <code>*evalhook*</code></div>
+<div style="padding-left: 2em;">            <i>ahook</i> &ndash;    the value for <code>*applyhook*</code></div>
+<div style="padding-left: 2em;">            <i>env</i>   &ndash;    the environment (default is <code>nil</code>)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the result of evaluating the expression<br>
+
+</div>
+<br>
+        <code>profile(<i>flag</i>)</code> [SAL]<br>
+        <code>(profile<a name="index1610"></a> <tt><i>flag</i></tt>)</code> [LISP] <a href = "foot.html#foot8">(Footnote 8)</a>   &ndash; turn profiling on or off.<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>flag</i>   &ndash;    <code>nil</code> turns profiling off, otherwise on</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the previous state of profiling.<br>
+
+</div>
+
+</div>
+
+<p>
+<a name = "254"><h3>Arithmetic Functions</h3></a><a name="index1611"></a>
+<div style="padding-left: 0em;">
+        <code>truncate<a name="index1612"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(truncate <tt><i>expr</i></tt>)</code> [LISP]  &ndash; truncates a floating point number to an integer<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the number</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the result of truncating the number<br>
+
+</div>
+<br>
+        <code>float<a name="index1613"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(float <tt><i>expr</i></tt>)</code> [LISP]  &ndash; converts an integer to a floating point number<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the number</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the result of floating the integer<br>
+
+</div>
+<br>
+        <code>(+<a name="index1614"></a> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; add a list of numbers
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the numbers</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the result of the addition<br>
+
+</div>
+<br>
+        <code>(-<a name="index1615"></a> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; subtract a list of numbers or negate a single number
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the numbers</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the result of the subtraction<br>
+
+</div>
+<br>
+        <code>(*<a name="index1616"></a> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; multiply a list of numbers
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the numbers</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the result of the multiplication<br>
+
+</div>
+<br>
+        <code>(/<a name="index1617"></a> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; divide a list of numbers
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the numbers</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the result of the division<br>
+
+</div>
+<br>
+        <code>(1+<a name="index1618"></a> <tt><i>expr</i></tt>)</code> [LISP]  &ndash; add one to a number
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the number</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the number plus one<br>
+
+</div>
+<br>
+        <code>(1-<a name="index1619"></a> <tt><i>expr</i></tt>)</code> [LISP]  &ndash; subtract one from a number
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the number</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the number minus one<br>
+
+</div>
+<br>
+        <code>rem<a name="index1620"></a>(<i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(rem<a name="index1621"></a><a name="index1622"></a> function) <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; remainder of a list of numbers<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the numbers</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the result of the remainder operation<br>
+
+</div>
+<br>
+        <code>min<a name="index1623"></a>(<i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(min<a name="index1624"></a> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; the smallest of a list of numbers<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expressions to be checked</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the smallest number in the list<br>
+
+</div>
+<br>
+        <code>max<a name="index1625"></a>(<i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(max<a name="index1626"></a> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; the largest of a list of numbers<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expressions to be checked</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the largest number in the list<br>
+
+</div>
+<br>
+        <code>abs<a name="index1627"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(abs <tt><i>expr</i></tt>)</code> [LISP]  &ndash; the absolute value of a number<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the number</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the absolute value of the number<br>
+
+</div>
+<br>
+        <code>gcd<a name="index1628"></a>(<i>n1</i>, <i>n2</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(gcd <tt><i>n1</i></tt> <tt><i>n2</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; compute the greatest common divisor<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>n1</i>    &ndash;    the first number (integer)</div>
+<div style="padding-left: 2em;">            <i>n2</i>    &ndash;    the second number(s) (integer)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the greatest common divisor<br>
+
+</div>
+<br>
+       <code>random<a name="index1629"></a>(<i>n</i>)</code> [SAL]<br>
+        <code>(random <tt><i>n</i></tt>)</code><br>
+
+        [LISP]  &ndash; compute a random number between 0 and |n|-1<br>
+
+        inclusive. If n is 0, return 0.<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>n</i>     &ndash;    the upper bound (integer)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  a random number<br>
+
+</div>
+<br>
+       <code>rrandom<a name="index1630"></a>()</code> [SAL]<br>
+        <code>(rrandom<a name="index1631"></a>)</code> [LISP]  &ndash; compute a random real number between 0 and 1 inclusive<br>
+
+
+</div><div style="padding-left: 2em;">
+            returns   &ndash;  a random floating point number<br>
+
+</div>
+<br>
+       <code>random-seed<a name="index1632"></a>(<i>n</i>)</code> [SAL]<br>
+        <code>(random-seed<a name="index1633"></a> <tt><i>n</i></tt>)</code><br>
+
+        [LISP]  &ndash; seed the random number generator with starting seed <i>n</i>. If <code>random-seed</code> is not called, <code>sranddev</code> or some other initialization method will be used by default.<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>n</i>     &ndash;    the upper bound (integer)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  a random number<br>
+
+</div>
+<br>
+        <code>sin<a name="index1634"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(sin <tt><i>expr</i></tt>)</code> [LISP]  &ndash; compute the sine of a number<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the floating point number</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the sine of the number<br>
+
+</div>
+<br>
+        <code>cos<a name="index1635"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(cos <tt><i>expr</i></tt>)</code> [LISP]  &ndash; compute the cosine of a number<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the floating point number</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the cosine of the number<br>
+
+</div>
+<br>
+        <code>tan<a name="index1636"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(tan <tt><i>expr</i></tt>)</code> [LISP]  &ndash; compute the tangent of a number<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the floating point number</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the tangent of the number<br>
+
+</div>
+<br>
+        <code>atan<a name="index1637"></a>(<i>expr</i> [, <i>expr2</i>])</code> [SAL]<br>
+        <code>(atan <tt><i>expr</i></tt> [<tt><i>expr2</i></tt>])</code> [LISP] <a href = "foot.html#foot9">(Footnote 9)</a>   &ndash; compute the arctangent<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the value of <i>x</i></div>
+<div style="padding-left: 2em;">            <i>expr2</i> &ndash;    the value of <i>y</i> (default value is 1.0)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the arctangent of <i>x</i>/<i>y</i><br>
+
+</div>
+<br>
+        <code>expt<a name="index1638"></a>(<i>x-expr</i>, <i>y-expr</i>)</code> [SAL]<br>
+        <code>(expt <tt><i>x-expr</i></tt> <tt><i>y-expr</i></tt>)</code> [LISP]  &ndash; compute x to the y power<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>x-expr</i> &ndash;    the floating point number</div>
+<div style="padding-left: 2em;">            <i>y-expr</i> &ndash;   the floating point exponent</div>
+<div style="padding-left: 2em;">            returns    &ndash; x to the y power<br>
+
+</div>
+<br>
+        <code>exp<a name="index1639"></a>(<i>x-expr</i>)</code> [SAL]<br>
+        <code>(exp <tt><i>x-expr</i></tt>)</code> [LISP]  &ndash; compute e to the x power<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>x-expr</i> &ndash;   the floating point number</div>
+<div style="padding-left: 2em;">            returns   &ndash;  e to the x power<br>
+
+</div>
+<br>
+        <code>sqrt<a name="index1640"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(sqrt <tt><i>expr</i></tt>)</code> [LISP]  &ndash; compute the square root of a number<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the floating point number</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the square root of the number<br>
+
+</div>
+
+
+<code>(&lt;<a name="index1641"></a> <tt><i>n1</i></tt> <tt><i>n2</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; test for less than<br>
+<code>(&lt;=<a name="index1642"></a> <tt><i>n1</i></tt> <tt><i>n2</i></tt><span style="font-style:normal">...</span>)</code> [LISP] &ndash;  test for less than or equal to<br>
+<code>(=<a name="index1643"></a> <tt><i>n1</i></tt> <tt><i>n2</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; test for equal to<br>
+<code>(/=<a name="index1644"></a> <tt><i>n1</i></tt> <tt><i>n2</i></tt><span style="font-style:normal">...</span>)</code> [LISP] &ndash;  test for not equal to<br>
+<code>(&gt;=<a name="index1645"></a> <tt><i>n1</i></tt> <tt><i>n2</i></tt><span style="font-style:normal">...</span>)</code> [LISP] &ndash;   test for greater than or equal to<br>
+<code>(&gt;<a name="index1646"></a> <tt><i>n1</i></tt> <tt><i>n2</i></tt><span style="font-style:normal">...</span>)</code> [LISP] &ndash;   test for greater than<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>n1</i>    &ndash;    the first number to compare</div>
+<div style="padding-left: 2em;">            <i>n2</i>    &ndash;    the second number to compare</div>
+<div style="padding-left: 2em;">returns   &ndash;  <code>t</code> if the results of comparing <i>n1</i> with <i>n2</i>,<br>
+
+<i>n2</i> with <i>n3</i>, etc., are all true.<br>
+
+</div>
+
+</div>
+
+<p>
+<a name = "255"><h3>Bitwise Logical Functions</h3></a><a name="index1647"></a>
+<div style="padding-left: 0em;">
+        <code>logand<a name="index1648"></a>(<i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(logand <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP] &ndash;  the bitwise and of a list of numbers<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the numbers</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the result of the and operation<br>
+
+</div>
+<br>
+        <code>logior<a name="index1649"></a>(<i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(logior <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; the bitwise inclusive or of a list of numbers<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the numbers</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the result of the inclusive or operation<br>
+
+</div>
+<br>
+        <code>logxor<a name="index1650"></a>(<i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(logxor <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; the bitwise exclusive or of a list of numbers<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the numbers</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the result of the exclusive or operation<br>
+
+</div>
+<br>
+        <code>lognot<a name="index1651"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(lognot <tt><i>expr</i></tt>)</code> [LISP]  &ndash; the bitwise not of a number<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the number</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the bitwise inversion of number<br>
+
+</div>
+
+</div>
+
+<p>
+<a name = "256"><h3>String Functions</h3></a><a name="index1652"></a>
+<div style="padding-left: 0em;">
+        <code>string<a name="index1653"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(string <tt><i>expr</i></tt>)</code> [LISP] &ndash;  make a string from a value<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    an integer (which is first converted into its ASCII character value), string, character, or symbol</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the string representation of the argument<br>
+
+</div>
+<br>
+        <code>string-search<a name="index1654"></a>(<i>pat</i>, <i>str</i>, start: <i>start</i>, end: <i>end</i>)</code> [SAL]<br>
+        <code>(string-search<a name="index1655"></a> <tt><i>pat</i></tt> <tt><i>str</i></tt> <tt>&amp;key </tt><tt>:start</tt> <tt>:end</tt>)</code> [LISP] <a href = "foot.html#foot10">(Footnote 10)</a>   &ndash; search for pattern in string<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>pat</i>   &ndash;    a string to search for</div>
+<div style="padding-left: 2em;">            <i>str</i>   &ndash;    the string to be searched</div>
+<div style="padding-left: 2em;">            :start    &ndash;  the starting offset in str</div>
+<div style="padding-left: 2em;">            :end      &ndash;  the ending offset + 1</div>
+<div style="padding-left: 2em;">            returns   &ndash;  index of pat in str or NIL if not found<br>
+
+</div>
+<br>
+        <code>string-trim<a name="index1656"></a>(<i>bag</i>, <i>str</i>)</code> [SAL]<br>
+        <code>(string-trim <tt><i>bag</i></tt> <tt><i>str</i></tt>)</code> [LISP]  &ndash; trim both ends of a string<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>bag</i>   &ndash;    a string containing characters to trim</div>
+<div style="padding-left: 2em;">            <i>str</i>   &ndash;    the string to trim</div>
+<div style="padding-left: 2em;">            returns   &ndash;  a trimed copy of the string<br>
+
+</div>
+<br>
+        <code>string-left-trim<a name="index1657"></a>(<i>bag</i>, <i>str</i>)</code> [SAL]<br>
+        <code>(string-left-trim <tt><i>bag</i></tt> <tt><i>str</i></tt>)</code> [LISP]  &ndash; trim the left end of a string<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>bag</i>   &ndash;    a string containing characters to trim</div>
+<div style="padding-left: 2em;">            <i>str</i>   &ndash;    the string to trim</div>
+<div style="padding-left: 2em;">            returns   &ndash;  a trimed copy of the string<br>
+
+</div>
+<br>
+        <code>string-right-trim<a name="index1658"></a>(<i>bag</i>, <i>str</i>)</code> [SAL]<br>
+        <code>(string-right-trim <tt><i>bag</i></tt> <tt><i>str</i></tt>)</code> [LISP]  &ndash; trim the right end of a string<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>bag</i>   &ndash;    a string containing characters to trim</div>
+<div style="padding-left: 2em;">            <i>str</i>   &ndash;    the string to trim</div>
+<div style="padding-left: 2em;">            returns   &ndash;  a trimed copy of the string<br>
+
+</div>
+<br>
+        <code>string-upcase<a name="index1659"></a>(<i>str</i>, start: <i>start</i>, end: <i>end</i>)</code> [SAL]<br>
+        <code>(string-upcase <tt><i>str</i></tt> <tt>&amp;key </tt><tt>:start</tt> <tt>:end</tt>)</code> [LISP]  &ndash; convert to uppercase<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>str</i>   &ndash;    the string</div>
+<div style="padding-left: 2em;">            :start    &ndash;  the starting offset</div>
+<div style="padding-left: 2em;">            :end      &ndash;  the ending offset + 1</div>
+<div style="padding-left: 2em;">            returns   &ndash;  a converted copy of the string<br>
+
+</div>
+<br>
+        <code>string-downcase<a name="index1660"></a>(<i>str</i>, start: <i>start</i>, end: <i>end</i>)</code> [SAL]<br>
+        <code>(string-downcase <tt><i>str</i></tt> <tt>&amp;key </tt><tt>:start</tt> <tt>:end</tt>)</code> [LISP]  &ndash; convert to lowercase<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>str</i>   &ndash;    the string</div>
+<div style="padding-left: 2em;">            :start    &ndash;  the starting offset</div>
+<div style="padding-left: 2em;">            :end      &ndash;  the ending offset + 1</div>
+<div style="padding-left: 2em;">            returns   &ndash;  a converted copy of the string<br>
+
+</div>
+<br>
+        <code>nstring-upcase<a name="index1661"></a>(<i>str</i>, start: <i>start</i>, end: <i>end</i>)</code> [SAL]<br>
+        <code>(nstring-upcase <tt><i>str</i></tt> <tt>&amp;key </tt><tt>:start</tt> <tt>:end</tt>)</code> [LISP]  &ndash; convert to uppercase<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>str</i>   &ndash;    the string</div>
+<div style="padding-left: 2em;">            :start    &ndash;  the starting offset</div>
+<div style="padding-left: 2em;">            :end      &ndash;  the ending offset + 1</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the converted string (not a copy)<br>
+
+</div>
+<br>
+        <code>nstring-downcase<a name="index1662"></a>(<i>str</i>, start: <i>start</i>, end: <i>end</i>)</code> [SAL]<br>
+        <code>(nstring-downcase <tt><i>str</i></tt> <tt>&amp;key </tt><tt>:start</tt> <tt>:end</tt>)</code> [LISP]  &ndash; convert to lowercase<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>str</i>   &ndash;    the string</div>
+<div style="padding-left: 2em;">            :start    &ndash;  the starting offset</div>
+<div style="padding-left: 2em;">            :end      &ndash;  the ending offset + 1</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the converted string (not a copy)<br>
+
+</div>
+<br>
+        <code>strcat<a name="index1663"></a>(<i>expr</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(strcat<a name="index1664"></a> <tt><i>expr</i></tt><span style="font-style:normal">...</span>)</code> [LISP]  &ndash; concatenate strings<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i> &ndash;     the strings to concatenate</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the result of concatenating the strings<br>
+
+</div>
+<br>
+        <code>subseq<a name="index1665"></a>(<i>string</i>, <i>start</i> [, <i>end</i>])</code> [SAL]<br>
+        <code>(subseq <tt><i>string</i></tt> <tt><i>start</i></tt> [<tt><i>end</i></tt>])</code> [LISP]  &ndash; extract a substring<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>string</i> &ndash;   the string</div>
+<div style="padding-left: 2em;">            <i>start</i>  &ndash;   the starting position (zero origin)</div>
+<div style="padding-left: 2em;">            <i>end</i>    &ndash;   the ending position + 1 (defaults to end)</div>
+<div style="padding-left: 2em;">            returns    &ndash; substring between <i>start</i> and <i>end</i><br>
+
+</div>
+<br>
+        <code>string&lt;<a name="index1666"></a>(<i>str1</i>, <i>str2</i>, start1: <i>start1</i>, end1: <i>end1</i>, start2: <i>start2</i>, end2: <i>end2</i>)</code> [SAL]<br>
+        <code>(string&lt; <tt><i>str1</i></tt> <tt><i>str2</i></tt> <tt>&amp;key </tt><tt>:start1</tt> <tt>:end1</tt> <tt>:start2</tt> <tt>:end2</tt>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+        <code>string&lt;=<a name="index1667"></a>(<i>str1</i>, <i>str2</i>, start1: <i>start1</i>, end1: <i>end1</i>, start2: <i>start2</i>, end2: <i>end2</i>)</code> [SAL]<br>
+        <code>(string&lt;= <tt><i>str1</i></tt> <tt><i>str2</i></tt> <tt>&amp;key </tt><tt>:start1</tt> <tt>:end1</tt> <tt>:start2</tt> <tt>:end2</tt>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+        <code>string=<a name="index1668"></a>(<i>str1</i>, <i>str2</i>, start1: <i>start1</i>, end1: <i>end1</i>, start2: <i>start2</i>, end2: <i>end2</i>)</code> [SAL]<br>
+        <code>(string= <tt><i>str1</i></tt> <tt><i>str2</i></tt> <tt>&amp;key </tt><tt>:start1</tt> <tt>:end1</tt> <tt>:start2</tt> <tt>:end2</tt>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+        <code>string/=<a name="index1669"></a>(<i>str1</i>, <i>str2</i>, start1: <i>start1</i>, end1: <i>end1</i>, start2: <i>start2</i>, end2: <i>end2</i>)</code> [SAL]<br>
+        <code>(string/= <tt><i>str1</i></tt> <tt><i>str2</i></tt> <tt>&amp;key </tt><tt>:start1</tt> <tt>:end1</tt> <tt>:start2</tt> <tt>:end2</tt>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+        <code>string&gt;=<a name="index1670"></a>(<i>str1</i>, <i>str2</i>, start1: <i>start1</i>, end1: <i>end1</i>, start2: <i>start2</i>, end2: <i>end2</i>)</code> [SAL]<br>
+        <code>(string&gt;= <tt><i>str1</i></tt> <tt><i>str2</i></tt> <tt>&amp;key </tt><tt>:start1</tt> <tt>:end1</tt> <tt>:start2</tt> <tt>:end2</tt>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+        <code>string&gt;<a name="index1671"></a>(<i>str1</i>, <i>str2</i>, start1: <i>start1</i>, end1: <i>end1</i>, start2: <i>start2</i>, end2: <i>end2</i>)</code> [SAL]<br>
+        <code>(string&gt; <tt><i>str1</i></tt> <tt><i>str2</i></tt> <tt>&amp;key </tt><tt>:start1</tt> <tt>:end1</tt> <tt>:start2</tt> <tt>:end2</tt>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>str1</i> &ndash;     the first string to compare</div>
+<div style="padding-left: 2em;">            <i>str2</i> &ndash;     the second string to compare</div>
+<div style="padding-left: 2em;">            :start1  &ndash;   first substring starting offset</div>
+<div style="padding-left: 2em;">            :end1    &ndash;   first substring ending offset + 1</div>
+<div style="padding-left: 2em;">            :start2  &ndash;   second substring starting offset</div>
+<div style="padding-left: 2em;">            :end2    &ndash;   second substring ending offset + 1</div>
+<div style="padding-left: 2em;">            returns  &ndash;   <code>t</code> if predicate is true, <code>nil</code> otherwise</div>
+<div style="padding-left: 2em;">          Note: case is significant with these comparison functions.<br>
+
+</div>
+
+<code>string-lessp<a name="index1672"></a>(<i>str1</i>, <i>str2</i>, start1: <i>start1</i>, end1: <i>end1</i>, start2: <i>start2</i>, end2: <i>end2</i>)</code> [SAL]<br>
+        <code>(string-lessp <tt><i>str1</i></tt> <tt><i>str2</i></tt> <tt>&amp;key </tt><tt>:start1</tt> <tt>:end1</tt> <tt>:start2</tt> <tt>:end2</tt>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+<code>string-not-greaterp<a name="index1673"></a>(<i>str1</i>, <i>str2</i>, start1: <i>start1</i>, end1: <i>end1</i>, start2: <i>start2</i>, end2: <i>end2</i>)</code> [SAL]<br>
+        <code>(string-not-greaterp <tt><i>str1</i></tt> <tt><i>str2</i></tt> <tt>&amp;key </tt><tt>:start1</tt> <tt>:end1</tt> <tt>:start2</tt> <tt>:end2</tt>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+<code>string-equal<a name="index1674"></a>(<i>str1</i>, <i>str2</i>, start1: <i>start1</i>, end1: <i>end1</i>, start2: <i>start2</i>, end2: <i>end2</i>)</code> [SAL]<br>
+        <code>(string-equal <tt><i>str1</i></tt> <tt><i>str2</i></tt> <tt>&amp;key </tt><tt>:start1</tt> <tt>:end1</tt> <tt>:start2</tt> <tt>:end2</tt>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+<code>string-not-equal<a name="index1675"></a>(<i>str1</i>, <i>str2</i>, start1: <i>start1</i>, end1: <i>end1</i>, start2: <i>start2</i>, end2: <i>end2</i>)</code> [SAL]<br>
+        <code>(string-not-equal <tt><i>str1</i></tt> <tt><i>str2</i></tt> <tt>&amp;key </tt><tt>:start1</tt> <tt>:end1</tt> <tt>:start2</tt> <tt>:end2</tt>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+<code>string-not-lessp<a name="index1676"></a>(<i>str1</i>, <i>str2</i>, start1: <i>start1</i>, end1: <i>end1</i>, start2: <i>start2</i>, end2: <i>end2</i>)</code> [SAL]<br>
+        <code>(string-not-lessp <tt><i>str1</i></tt> <tt><i>str2</i></tt> <tt>&amp;key </tt><tt>:start1</tt> <tt>:end1</tt> <tt>:start2</tt> <tt>:end2</tt>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+<code>string-greaterp<a name="index1677"></a>(<i>str1</i>, <i>str2</i>, start1: <i>start1</i>, end1: <i>end1</i>, start2: <i>start2</i>, end2: <i>end2</i>)</code> [SAL]<br>
+        <code>(string-greaterp <tt><i>str1</i></tt> <tt><i>str2</i></tt> <tt>&amp;key </tt><tt>:start1</tt> <tt>:end1</tt> <tt>:start2</tt> <tt>:end2</tt>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>str1</i> &ndash;     the first string to compare</div>
+<div style="padding-left: 2em;">            <i>str2</i> &ndash;     the second string to compare</div>
+<div style="padding-left: 2em;">            :start1  &ndash;   first substring starting offset</div>
+<div style="padding-left: 2em;">            :end1    &ndash;   first substring ending offset + 1</div>
+<div style="padding-left: 2em;">            :start2  &ndash;   second substring starting offset</div>
+<div style="padding-left: 2em;">            :end2    &ndash;   second substring ending offset + 1</div>
+<div style="padding-left: 2em;">    returns  &ndash;   <code>t</code> if predicate is true, <code>nil</code> otherwise</div>
+<div style="padding-left: 2em;">          Note: case is not significant with these comparison functions.<br>
+
+</div>
+
+</div>
+
+<p>
+<a name = "257"><h3>Character Functions</h3></a><a name="index1678"></a>
+<div style="padding-left: 0em;">
+        <code>char<a name="index1679"></a>(<i>string</i>, <i>index</i>)</code> [SAL]<br>
+        <code>(char <tt><i>string</i></tt> <tt><i>index</i></tt>)</code> [LISP] &ndash;  extract a character from a string<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>string</i> &ndash;   the string</div>
+<div style="padding-left: 2em;">            <i>index</i>  &ndash;   the string index (zero relative)</div>
+<div style="padding-left: 2em;">            returns    &ndash; the ascii code of the character<br>
+
+</div>
+<br>
+        <code>upper-case-p<a name="index1680"></a>(<i>chr</i>)</code> [SAL]<br>
+        <code>(upper-case-p <tt><i>chr</i></tt>)</code> [LISP]  &ndash; is this an upper case character?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>chr</i> &ndash;      the character</div>
+<div style="padding-left: 2em;">            returns &ndash;    <code>t</code> if the character is upper case, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>lower-case-p<a name="index1681"></a>(<i>chr</i>)</code> [SAL]<br>
+        <code>(lower-case-p <tt><i>chr</i></tt>)</code> [LISP]  &ndash; is this a lower case character?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>chr</i> &ndash;      the character</div>
+<div style="padding-left: 2em;">            returns &ndash;    <code>t</code> if the character is lower case, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>both-case-p<a name="index1682"></a>(<i>chr</i>)</code> [SAL]<br>
+        <code>(both-case-p <tt><i>chr</i></tt>)</code> [LISP]  &ndash; is this an alphabetic (either case) character?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>chr</i> &ndash;      the character</div>
+<div style="padding-left: 2em;">            returns &ndash;    <code>t</code> if the character is alphabetic, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>digit-char-p<a name="index1683"></a>(<i>chr</i>)</code> [SAL]<br>
+        <code>(digit-char-p <tt><i>chr</i></tt>)</code> [LISP]  &ndash; is this a digit character?<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>chr</i> &ndash;      the character</div>
+<div style="padding-left: 2em;">            returns &ndash;    the digit weight if character is a digit, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>char-code<a name="index1684"></a>(<i>chr</i>)</code> [SAL]<br>
+        <code>(char-code <tt><i>chr</i></tt>)</code> [LISP]  &ndash; get the ascii code of a character<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>chr</i> &ndash;      the character</div>
+<div style="padding-left: 2em;">            returns &ndash;    the ascii character code (integer)<br>
+
+</div>
+<br>
+        <code>code-char<a name="index1685"></a>(<i>code</i>)</code> [SAL]<br>
+        <code>(code-char <tt><i>code</i></tt>)</code> [LISP]  &ndash; get the character with a specified ascii code<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>code</i> &ndash;     the ascii code (integer)</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the character with that code or <code>nil</code><br>
+
+</div>
+<br>
+        <code>char-upcase<a name="index1686"></a>(<i>chr</i>)</code> [SAL]<br>
+        <code>(char-upcase <tt><i>chr</i></tt>)</code> [LISP]  &ndash; convert a character to upper case<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>chr</i>  &ndash;     the character</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the upper case character<br>
+
+</div>
+<br>
+        <code>char-downcase<a name="index1687"></a>(<i>chr</i>)</code> [SAL]<br>
+        <code>(char-downcase <tt><i>chr</i></tt>)</code> [LISP]  &ndash; convert a character to lower case<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>chr</i>  &ndash;     the character</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the lower case character<br>
+
+</div>
+<br>
+        <code>digit-char<a name="index1688"></a>(<i>n</i>)</code> [SAL]<br>
+        <code>(digit-char <tt><i>n</i></tt>)</code> [LISP]  &ndash; convert a digit weight to a digit<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>n</i>    &ndash;     the digit weight (integer)</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the digit character or <code>nil</code><br>
+
+</div>
+<br>
+        <code>char-int<a name="index1689"></a>(<i>chr</i>)</code> [SAL]<br>
+        <code>(char-int <tt><i>chr</i></tt>)</code> [LISP]  &ndash; convert a character to an integer<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>chr</i>  &ndash;     the character</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the ascii character code<br>
+
+</div>
+<br>
+        <code>int-char<a name="index1690"></a>(<i>int</i>)</code> [SAL]<br>
+        <code>(int-char <tt><i>int</i></tt>)</code> [LISP]  &ndash; convert an integer to a character<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>int</i>  &ndash;     the ascii character code</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the character with that code<br>
+
+</div>
+
+<code>char&lt;<a name="index1691"></a>(<i>chr1</i>, <i>chr2</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(char&lt; <tt><i>chr1</i></tt> <tt><i>chr2</i></tt><span style="font-style:normal">...</span>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+<code>char&lt;=<a name="index1692"></a>(<i>chr1</i>, <i>chr2</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(char&lt;= <tt><i>chr1</i></tt> <tt><i>chr2</i></tt><span style="font-style:normal">...</span>)</code> [LISP]<br>
+
+<code>char=<a name="index1693"></a>(<i>chr1</i>, <i>chr2</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(char= <tt><i>chr1</i></tt> <tt><i>chr2</i></tt><span style="font-style:normal">...</span>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+<code>char/=<a name="index1694"></a>(<i>chr1</i>, <i>chr2</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(char/= <tt><i>chr1</i></tt> <tt><i>chr2</i></tt><span style="font-style:normal">...</span>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+<code>char&gt;=<a name="index1695"></a>(<i>chr1</i>, <i>chr2</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(char&gt;= <tt><i>chr1</i></tt> <tt><i>chr2</i></tt><span style="font-style:normal">...</span>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+<code>char&gt;<a name="index1696"></a>(<i>chr1</i>, <i>chr2</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(char&gt; <tt><i>chr1</i></tt> <tt><i>chr2</i></tt><span style="font-style:normal">...</span>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>chr1</i> &ndash;     the first character to compare</div>
+<div style="padding-left: 2em;">            <i>chr2</i> &ndash;     the second character(s) to compare</div>
+<div style="padding-left: 2em;">            returns  &ndash;   <code>t</code> if predicate is true, <code>nil</code> otherwise</div>
+<div style="padding-left: 2em;">          Note: case is significant with these comparison functions.<br>
+
+</div>
+
+<code>char-lessp<a name="index1697"></a>(<i>chr1</i>, <i>chr2</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(char-lessp <tt><i>chr1</i></tt> <tt><i>chr2</i></tt><span style="font-style:normal">...</span>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+<code>char-not-greaterp<a name="index1698"></a>(<i>chr1</i>, <i>chr2</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(char-not-greaterp <tt><i>chr1</i></tt> <tt><i>chr2</i></tt><span style="font-style:normal">...</span>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+<code>char-equal<a name="index1699"></a>(<i>chr1</i>, <i>chr2</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(char-equal <tt><i>chr1</i></tt> <tt><i>chr2</i></tt><span style="font-style:normal">...</span>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+<code>char-not-equal<a name="index1700"></a>(<i>chr1</i>, <i>chr2</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(char-not-equal <tt><i>chr1</i></tt> <tt><i>chr2</i></tt><span style="font-style:normal">...</span>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+<code>char-not-lessp<a name="index1701"></a>(<i>chr1</i>, <i>chr2</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(char-not-lessp <tt><i>chr1</i></tt> <tt><i>chr2</i></tt><span style="font-style:normal">...</span>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+</div>
+
+<code>char-greaterp<a name="index1702"></a>(<i>chr1</i>, <i>chr2</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(char-greaterp <tt><i>chr1</i></tt> <tt><i>chr2</i></tt><span style="font-style:normal">...</span>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+<i>chr1</i> &ndash;     the first string to compare</div>
+<div style="padding-left: 2em;"><i>chr2</i> &ndash;     the second string(s) to compare</div>
+<div style="padding-left: 2em;">returns  &ndash;   <code>t</code> if predicate is true, <code>nil</code> otherwise</div>
+<div style="padding-left: 2em;">          Note: case is not significant with these comparison functions.<br>
+
+</div>
+
+</div>
+
+<p>
+<a name = "258"><h3>Input/Output Functions</h3></a><a name="index1703"></a>
+<div style="padding-left: 0em;">
+        <code>read<a name="index1704"></a>([<i>stream</i> [, <i>eof</i> [, <i>rflag</i>]]])</code> [SAL]<br>
+        <code>(read [<tt><i>stream</i></tt> [<tt><i>eof</i></tt> [<tt><i>rflag</i></tt>]]])</code> [LISP]  &ndash; read an expression<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>stream</i> &ndash;   the input stream (default is standard input)</div>
+<div style="padding-left: 2em;">            <i>eof</i>    &ndash;   the value to return on end of file (default is <code>nil</code>)</div>
+<div style="padding-left: 2em;">            <i>rflag</i>  &ndash;   recursive read flag (default is <code>nil</code>)</div>
+<div style="padding-left: 2em;">            returns    &ndash; the expression read<br>
+
+</div>
+<br>
+        <code>(print<a name="index1705"></a> <tt><i>expr</i></tt> [<tt><i>stream</i></tt>])</code> [LISP]  &ndash; print an expression on a new line
+</div><div style="padding-left: 2em;">
+            <i>expr</i>   &ndash;   the expression to be printed</div>
+<div style="padding-left: 2em;">            <i>stream</i> &ndash;   the output stream (default is standard output)</div>
+<div style="padding-left: 2em;">            returns    &ndash; the expression<br>
+
+</div>
+<br>
+        <code>prin1<a name="index1706"></a>(<i>expr</i> [, <i>stream</i>])</code> [SAL]<br>
+        <code>(prin1 <tt><i>expr</i></tt> [<tt><i>stream</i></tt>])</code> [LISP]  &ndash; print an expression<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>   &ndash;   the expression to be printed</div>
+<div style="padding-left: 2em;">            <i>stream</i> &ndash;   the output stream (default is standard output)</div>
+<div style="padding-left: 2em;">            returns    &ndash; the expression<br>
+
+</div>
+<br>
+        <code>princ<a name="index1707"></a>(<i>expr</i> [, <i>stream</i>])</code> [SAL]<br>
+        <code>(princ <tt><i>expr</i></tt> [<tt><i>stream</i></tt>])</code> [LISP]  &ndash; print an expression without quoting<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>   &ndash;   the expressions to be printed</div>
+<div style="padding-left: 2em;">            <i>stream</i> &ndash;   the output stream (default is standard output)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the expression<br>
+
+</div>
+<br>
+        <code>pprint<a name="index1708"></a>(<i>expr</i> [, <i>stream</i>])</code> [SAL]<br>
+        <code>(pprint <tt><i>expr</i></tt> [<tt><i>stream</i></tt>])</code> [LISP]  &ndash; pretty print an expression<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expressions to be printed</div>
+<div style="padding-left: 2em;">            <i>stream</i> &ndash;   the output stream (default is standard output)</div>
+<div style="padding-left: 2em;">            returns &ndash;    the expression<br>
+
+</div>
+<br>
+        <code>terpri<a name="index1709"></a>([<i>stream</i>])</code> [SAL]<br>
+        <code>(terpri [<tt><i>stream</i></tt>])</code> [LISP]  &ndash; terminate the current print line<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>stream</i> &ndash;   the output stream (default is standard output)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  <code>nil</code><br>
+
+</div>
+<br>
+        <code>flatsize<a name="index1710"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(flatsize <tt><i>expr</i></tt>)</code> [LISP]  &ndash; length of printed representation using prin1<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>  &ndash;    the expression</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the length<br>
+
+</div>
+<br>
+        <code>flatc<a name="index1711"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(flatc <tt><i>expr</i></tt>)</code> [LISP]  &ndash; length of printed representation using princ<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i> &ndash;     the expression</div>
+<div style="padding-left: 2em;">            returns  &ndash;   the length<br>
+
+</div>
+
+</div>
+
+<p>
+<a name = "259"><h3>The Format Function</h3></a><a name="index1712"></a>
+<div style="padding-left: 0em;">
+<code>format<a name="index1713"></a>(<i>stream</i>, <i>fmt</i>, <i>arg</i><span style="font-style:normal">...</span>)</code> [SAL]<br>
+        <code>(format <tt><i>stream</i></tt> <tt><i>fmt</i></tt> <tt><i>arg</i></tt><span style="font-style:normal">...</span>)</code> [LISP]   &ndash; do formated<br>
+
+
+output
+</div><div style="padding-left: 2em;">
+            <i>stream</i> &ndash;   the output stream</div>
+<div style="padding-left: 2em;">            <i>fmt</i>    &ndash;   the format string</div>
+<div style="padding-left: 2em;">            <i>arg</i>    &ndash;   the format arguments</div>
+<div style="padding-left: 2em;">            returns   &ndash;  output string if <i>stream</i> is <code>nil</code>, <code>nil</code> otherwise<br>
+
+</div>
+
+</div>
+
+       The format string can contain characters that should be copied
+        directly to the output and formatting directives.  The
+        formatting directives are:
+<blockquote>
+<code>~A</code> &ndash; print next argument using princ<br>
+
+<code>~S</code> &ndash; print next argument using prin1<br>
+
+<code>~%</code> &ndash; start a new line<br>
+
+<code>~~</code> &ndash; print a tilde character<br>
+
+<code>~</code>&lt;newline&gt; &ndash; ignore this one newline and white space on the <br>
+
+next line up to the first non-white-space character or newline. This <br>
+
+allows strings to continue across multiple lines<br>
+
+</blockquote>
+<p>
+<a name = "260"><h3>File I/O Functions</h3></a><a name="index1714"></a>
+Note that files are ordinarily opened as text. Binary files (such as standard midi files) must be opened with <code>open-binary</code> on non-unix systems.
+<p>
+<p>
+<div style="padding-left: 0em;">
+        <code>open<a name="index1715"></a>(<i>fname</i>, direction: <i>direction</i>)</code> [SAL]<br>
+        <code>(open <tt><i>fname</i></tt> <tt>&amp;key </tt><tt>:direction</tt>)</code> [LISP] &ndash;  open a file stream<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>fname</i> &ndash;    the file name string or symbol</div>
+<div style="padding-left: 2em;">            :direction &ndash; :input or :output (default is :input)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  a stream<br>
+
+</div>
+
+        <code>open-binary<a name="index1716"></a>(<i>fname</i>, direction: <i>direction</i>)</code> [SAL]<br>
+        <code>(open-binary<a name="index1717"></a><a name="index1718"></a> <tt><i>fname</i></tt> <tt>&amp;key </tt><tt>:direction</tt>)</code> [LISP] &ndash;  open a binary file stream<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>fname</i> &ndash;    the file name string or symbol</div>
+<div style="padding-left: 2em;">            :direction &ndash; :input or :output (default is :input)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  a stream<br>
+
+</div>
+<br>
+        <code>close<a name="index1719"></a>(<i>stream</i>)</code> [SAL]<br>
+        <code>(close <tt><i>stream</i></tt>)</code> [LISP]  &ndash; close a file stream<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>stream</i> &ndash;   the stream</div>
+<div style="padding-left: 2em;">            returns    &ndash; <code>nil</code><br>
+
+</div>
+<br>
+        <code>setdir<a name="index1720"></a>(<i>path</i> [, <i>verbose</i>])</code> [SAL]<br>
+        <code>(setdir<a name="index1721"></a> <tt><i>path</i></tt> [<tt><i>verbose</i></tt>])</code> [LISP] <a href = "foot.html#foot11">(Footnote 11)</a>  &ndash; set current directory<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>path</i> &ndash;   the path of the new directory</div>
+<div style="padding-left: 2em;">            <i>verbose</i> &ndash; print error message if current directory cannot be changed to <i>path</i></div>
+<div style="padding-left: 2em;">            returns   &ndash;  the resulting full path, e.g. (setdir ".") gets the current working directory, or <code>nil</code> if an error occurs<br>
+
+</div>
+<br>
+        <code>listdir<a name="index1722"></a>(<i>path</i>)</code> [SAL]<br>
+        <code>(listdir<a name="index1723"></a><a name="index1724"></a><a name="index1725"></a><a name="index1726"></a> <tt><i>path</i></tt>)</code> [LISP] <a href = "foot.html#foot12">(Footnote 12)</a>  &ndash; get a directory listing<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>path</i> &ndash;   the path of the directory to be listed</div>
+<div style="padding-left: 2em;">            returns   &ndash;  list of filenames in the directory<br>
+
+</div>
+<br>
+        <code>get-temp-path<a name="index1727"></a>()</code> [SAL]<br>
+        <code>(get-temp-path<a name="index1728"></a><a name="index1729"></a>)</code> [LISP] <a href = "foot.html#foot13">(Footnote 13)</a>  &ndash; get a path where a temporary file can be created. Under Windows, this is based on environment variables. If XLISP is running as a sub-process to Java, the environment may not exist, in which case the default result is the unfortunate choice <code>c:\windows\</code>.<br>
+
+
+</div><div style="padding-left: 2em;">
+            returns   &ndash;  the resulting full path as a string<br>
+
+</div>
+<br>
+        <code>get-user<a name="index1730"></a>()</code> [SAL]<br>
+        <code>(get-user<a name="index1731"></a><a name="index1732"></a>)</code> [LISP] <a href = "foot.html#foot14">(Footnote 14)</a>  &ndash; get the user ID. In Unix systems (including OS X and Linux), this is the value of the USER environment variable. In Windows, this is currently just "nyquist", which is also returned if the environment variable cannot be accessed. This function is used to avoid the case of two users creating files of the same name in the same temp directory.<br>
+
+
+</div><div style="padding-left: 2em;">
+            returns   &ndash; the string naming the user<br>
+
+</div>
+
+        <code>find-in-xlisp-path<a name="index1733"></a>(<i>filename</i>)</code> [SAL]<br>
+        <code>(find-in-xlisp-path <tt><i>filename</i></tt>)</code> [LISP] <a href = "foot.html#foot15">(Footnote 15)</a>  &ndash; search the XLISP search path (e.g. <code>XLISPPATH</code> from the environment) for <i>filename</i>. If <i>filename</i> is not found as is, and there is no file extension, append "<code>.lsp</code>" to <i>filename</i> and search again. The current directory is not searched.<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>filename</i> &ndash; the name of the file to search for</div>
+<div style="padding-left: 2em;">            returns &ndash; a full path name to the first occurrence found<br>
+
+</div>
+<br>
+        <code>read-char<a name="index1734"></a>([<i>stream</i>])</code> [SAL]<br>
+        <code>(read-char<a name="index1735"></a> [<tt><i>stream</i></tt>])</code> [LISP]  &ndash; read a character from a stream<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>stream</i> &ndash;   the input stream (default is standard input)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the character<br>
+
+</div>
+<br>
+        <code>peek-char<a name="index1736"></a>([<i>flag</i> [, <i>stream</i>]])</code> [SAL]<br>
+        <code>(peek-char [<tt><i>flag</i></tt> [<tt><i>stream</i></tt>]])</code> [LISP]  &ndash; peek at the next character<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>flag</i>  &ndash;    flag for skipping white space (default is <code>nil</code>)</div>
+<div style="padding-left: 2em;">            <i>stream</i> &ndash;    the input stream (default is standard input)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the character (integer)<br>
+
+</div>
+<br>
+        <code>write-char<a name="index1737"></a>(<i>ch</i>  [, <i>stream</i>])</code> [SAL]<br>
+        <code>(write-char <tt><i>ch</i></tt> [<tt><i>stream</i></tt>])</code> [LISP]  &ndash; write a character to a stream<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>ch</i>    &ndash;    the character to write</div>
+<div style="padding-left: 2em;">            <i>stream</i> &ndash;   the output stream (default is standard output)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the character<br>
+
+</div>
+<br>
+        <code>read-int<a name="index1738"></a>([<i>stream</i> [, <i>length</i>]])</code> [SAL]<br>
+        <code>(read-int [<tt><i>stream</i></tt> [<tt><i>length</i></tt>]])</code> [LISP]  &ndash; read a binary integer from a stream<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>stream</i> &ndash;   the input stream (default is standard input)</div>
+<div style="padding-left: 2em;">            <i>length</i> &ndash; the length of the integer in bytes (default is 4)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the integer</div>
+<div style="padding-left: 2em;">Note: Integers are assumed to be big-endian (high-order byte first) and <br>
+
+signed, regardless of the platform. To read little-endian format, use a<br>
+
+negative number for the length, e.g. -4 indicates a 4-bytes, low-order<br>
+
+byte first. The file should be opened in binary mode.<br>
+
+</div>
+<br>
+        <code>write-int<a name="index1739"></a>(<i>ch</i> [, <i>stream</i> [, <i>length</i>]])</code> [SAL]<br>
+        <code>(write-int <tt><i>ch</i></tt> [<tt><i>stream</i></tt> [<tt><i>length</i></tt>]])</code> [LISP]  &ndash; write a binary integer to a stream<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>ch</i>    &ndash;    the character to write</div>
+<div style="padding-left: 2em;">            <i>stream</i> &ndash;   the output stream (default is standard output)</div>
+<div style="padding-left: 2em;">            <i>length</i> &ndash; the length of the integer in bytes (default is 4)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the integer</div>
+<div style="padding-left: 2em;">Note: Integers are assumed to be big-endian (high-order byte first) and <br>
+
+signed, regardless of the platform. To write in little-endian format, use a<br>
+
+negative number for the length, e.g. -4 indicates a 4-bytes, low-order<br>
+
+byte first. The file should be opened in binary mode.<br>
+
+</div>
+<br>
+        <code>read-float<a name="index1740"></a>([<i>stream</i> [, <i>length</i>]])</code> [SAL]<br>
+        <code>(read-float [<tt><i>stream</i></tt> [<tt><i>length</i></tt>]])</code> [LISP]  &ndash; read a binary floating-point number from a stream<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>stream</i> &ndash;   the input stream (default is standard input)</div>
+<div style="padding-left: 2em;">            <i>length</i> &ndash; the length of the float in bytes (default is 4, legal values are -4, -8, 4, and 8)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the integer</div>
+<div style="padding-left: 2em;">Note: Floats are assumed to be big-endian (high-order byte first) and <br>
+
+signed, regardless of the platform. To read little-endian format, use a<br>
+
+negative number for the length, e.g. -4 indicates a 4-bytes, low-order<br>
+
+byte first. The file should be opened in binary mode.<br>
+
+</div>
+<br>
+        <code>write-float<a name="index1741"></a>(<i>ch</i> [, <i>stream</i> [, <i>length</i>]])</code> [SAL]<br>
+        <code>(write-float <tt><i>ch</i></tt> [<tt><i>stream</i></tt> [<tt><i>length</i></tt>]])</code> [LISP]  &ndash; write a binary floating-point number to a stream<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>ch</i>    &ndash;    the character to write</div>
+<div style="padding-left: 2em;">            <i>stream</i> &ndash;   the output stream (default is standard output)</div>
+<div style="padding-left: 2em;">            <i>length</i> &ndash; the length of the float in bytes (default is 4, legal values are -4, -8, 4, and 8)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the integer</div>
+<div style="padding-left: 2em;">Note: Floats are assumed to be big-endian (high-order byte first) and <br>
+
+signed, regardless of the platform. To write in little-endian format, use a<br>
+
+negative number for the length, e.g. -4 indicates a 4-bytes, low-order<br>
+
+byte first. The file should be opened in binary mode.<br>
+
+</div>
+<br>
+        <code>read-line<a name="index1742"></a>([<i>stream</i>])</code> [SAL]<br>
+        <code>(read-line [<tt><i>stream</i></tt>])</code> [LISP]  &ndash; read a line from a stream<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>stream</i> &ndash;   the input stream (default is standard input)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the string<br>
+
+</div>
+<br>
+        <code>read-byte<a name="index1743"></a>([<i>stream</i>])</code> [SAL]<br>
+        <code>(read-byte [<tt><i>stream</i></tt>])</code> [LISP]  &ndash; read a byte from a stream<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>stream</i> &ndash;   the input stream (default is standard input)</div>
+<div style="padding-left: 2em;">            returns    &ndash; the byte (integer)<br>
+
+</div>
+<br>
+        <code>write-byte<a name="index1744"></a>(<i>byte</i> [, <i>stream</i>])</code> [SAL]<br>
+        <code>(write-byte <tt><i>byte</i></tt> [<tt><i>stream</i></tt>])</code> [LISP]  &ndash; write a byte to a stream<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>byte</i>   &ndash;   the byte to write (integer)</div>
+<div style="padding-left: 2em;">            <i>stream</i> &ndash;   the output stream (default is standard output)</div>
+<div style="padding-left: 2em;">            returns    &ndash; the byte (integer)<br>
+
+</div>
+
+</div>
+
+<p>
+<a name = "261"><h3>String Stream Functions</h3></a><a name="index1745"></a>
+        These functions operate on unnamed streams.  An unnamed output
+        stream collects characters sent to it when it is used as the
+        destination of any output function.  The functions 
+<code>get-output-stream-string</code> and <code>get-output-stream-list</code> return a string or a list of characters.
+<p>
+An unnamed input stream is setup with the 
+ <code>make-string-input-stream</code> function and returns each character of the string when
+        it is used as the source of any input function.
+<p>
+<div style="padding-left: 0em;">
+        <code>make-string-input-stream<a name="index1746"></a>(<i>str</i> [, <i>start</i> [, <i>end</i>]])</code> [SAL]<br>
+        <code>(make-string-input-stream <tt><i>str</i></tt> [<tt><i>start</i></tt> [<tt><i>end</i></tt>]])</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>str</i>    &ndash;   the string</div>
+<div style="padding-left: 2em;">            <i>start</i>  &ndash;   the starting offset</div>
+<div style="padding-left: 2em;">            <i>end</i>    &ndash;   the ending offset + 1</div>
+<div style="padding-left: 2em;">            returns    &ndash; an unnamed stream that reads from the string<br>
+
+</div>
+<br>
+        <code>make-string-output-stream)<a name="index1747"></a>()</code> [SAL]<br>
+        <code>(make-string-output-stream)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+            returns   &ndash;  an unnamed output stream<br>
+
+</div>
+<br>
+        <code>get-output-stream-string<a name="index1748"></a>(<i>stream</i>)</code> [SAL]<br>
+        <code>(get-output-stream-string <tt><i>stream</i></tt>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>stream</i> &ndash;    the output stream</div>
+<div style="padding-left: 2em;">            returns    &ndash; the output so far as a string</div>
+<div style="padding-left: 2em;">          Note:  the output stream is emptied by this function<br>
+
+</div>
+<br>
+        <code>get-output-stream-list<a name="index1749"></a>(<i>stream</i>)</code> [SAL]<br>
+        <code>(get-output-stream-list <tt><i>stream</i></tt>)</code> [LISP]<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>stream</i> &ndash;   the output stream</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the output so far as a list</div>
+<div style="padding-left: 2em;">          Note:  the output stream is emptied by this function<br>
+
+</div>
+
+</div>
+
+<p>
+<a name = "262"><h3>System Functions</h3></a><a name="index1750"></a>
+Note: the <code>load</code> function first tries to load a file from the current directory. A <code>.lsp</code> extension is added if there is not already an alphanumeric extension following  a period.  If that fails, XLISP searches the path, which is obtained from the XLISPPATH environment variable in Unix and  HKEY_LOCAL_MACHINE\SOFTWARE\CMU\Nyquist\XLISPPATH under Win32. (The Macintosh version has no search path.)
+<p>
+<p>
+<div style="padding-left: 0em;">
+        <code>get-env<a name="index1751"></a>(<i>name</i>)</code> [SAL]<br>
+        <code>(get-env<a name="index1752"></a><a name="index1753"></a> <tt><i>name</i></tt>)</code> [LISP] &ndash; get from an environment variable<br>
+
+
+</div><div style="padding-left: 2em;">
+           <i>name</i> &ndash; the name of the environment variable</div>
+<div style="padding-left: 2em;">           returns  &ndash; string value of the environment variable, <code>nil</code> if variable does not exist<br>
+
+</div>
+<br>
+        <code>(load<a name="index1754"></a> <tt><i>fname</i></tt> <tt>&amp;key </tt><tt>:verbose</tt> <tt>:print</tt>)</code> [LISP]   &ndash; load a source file
+</div><div style="padding-left: 2em;">
+            <i>fname</i>   &ndash;  the filename string or symbol</div>
+<div style="padding-left: 2em;">            :verbose  &ndash;  the verbose flag (default is t)</div>
+<div style="padding-left: 2em;">            :print    &ndash;  the print flag (default is <code>nil</code>)</div>
+<div style="padding-left: 2em;">            returns   &ndash;  the filename<br>
+
+</div>
+<br>
+        <code>save<a name="index1755"></a>(<i>fname</i>)</code> [SAL]<br>
+        <code>(save <tt><i>fname</i></tt>)</code> [LISP] &ndash; save workspace to a file<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>fname</i> &ndash;    the filename string or symbol</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if workspace was written, <code>nil</code> otherwise<br>
+
+</div>
+<br>
+        <code>restore<a name="index1756"></a>(<i>fname</i>)</code> [SAL]<br>
+        <code>(restore <tt><i>fname</i></tt>)</code> [LISP]  &ndash; restore workspace from a file<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>fname</i> &ndash;    the filename string or symbol</div>
+<div style="padding-left: 2em;">            returns   &ndash;  <code>nil</code> on failure, otherwise never returns<br>
+
+</div>
+<br>
+        <code>dribble<a name="index1757"></a>([<i>fname</i>])</code> [SAL]<br>
+        <code>(dribble [<tt><i>fname</i></tt>])</code> [LISP]  &ndash; create a file with a transcript of a session<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>fname</i> &ndash;    file name string or symbol<br>
+
+                        (if missing, close current transcript)</div>
+<div style="padding-left: 2em;">            returns   &ndash; <code>t</code> if the transcript is opened, <code>nil</code> if it is closed<br>
+
+</div>
+<br>
+        <code>gc<a name="index1758"></a>()</code> [SAL]<br>
+        <code>(gc)</code> [LISP]  &ndash; force garbage collection<br>
+
+
+</div><div style="padding-left: 2em;">
+            returns &ndash;    <code>nil</code><br>
+
+</div>
+<br>
+        <code>expand<a name="index1759"></a>(<i>num</i>)</code> [SAL]<br>
+        <code>(expand <tt><i>num</i></tt>)</code> [LISP]  &ndash; expand memory by adding segments<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>num</i> &ndash;      the number of segments to add</div>
+<div style="padding-left: 2em;">            returns &ndash;    the number of segments added<br>
+
+</div>
+<br>
+        <code>alloc<a name="index1760"></a>(<i>num</i>)</code> [SAL]<br>
+        <code>(alloc <tt><i>num</i></tt>)</code> [LISP]  &ndash; change number of nodes to allocate in each segment<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>num</i> &ndash;      the number of nodes to allocate</div>
+<div style="padding-left: 2em;">            returns &ndash;    the old number of nodes to allocate<br>
+
+</div>
+<br>
+        <code>info<a name="index1761"></a>()</code> [SAL]<br>
+        <code>(info)</code> [LISP]  &ndash; show information about memory usage.<br>
+
+
+</div><div style="padding-left: 2em;">
+            returns &ndash;    <code>nil</code><br>
+
+</div>
+<br>
+        <code>room<a name="index1762"></a>()</code> [SAL]<br>
+        <code>(room)</code> [LISP]  &ndash; show memory allocation statistics<br>
+
+
+</div><div style="padding-left: 2em;">
+            returns &ndash;    <code>nil</code><br>
+
+</div>
+<br>
+        <code>type-of<a name="index1763"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(type-of <tt><i>expr</i></tt>)</code> [LISP]  &ndash; returns the type of the expression<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i> &ndash;     the expression to return the type of</div>
+<div style="padding-left: 2em;">            returns  &ndash;   <code>nil</code> if the value is <code>nil</code> otherwise one of the symbols:<br>
+
+</div><div style="padding-left: 4em;">
+                          SYMBOL      &ndash;    for symbols</div>
+<div style="padding-left: 4em;">                          OBJECT      &ndash;    for objects</div>
+<div style="padding-left: 4em;">                          CONS        &ndash;    for conses</div>
+<div style="padding-left: 4em;">                          SUBR        &ndash;    for built-in functions</div>
+<div style="padding-left: 4em;">                          FSUBR       &ndash;    for special forms</div>
+<div style="padding-left: 4em;">                          CLOSURE     &ndash;    for defined functions</div>
+<div style="padding-left: 4em;">                          STRING      &ndash;    for strings</div>
+<div style="padding-left: 4em;">                          FIXNUM      &ndash;    for integers</div>
+<div style="padding-left: 4em;">                          FLONUM      &ndash;    for floating point numbers</div>
+<div style="padding-left: 4em;">                          CHARACTER   &ndash;    for characters</div>
+<div style="padding-left: 4em;">                          FILE-STREAM &ndash;    for file pointers</div>
+<div style="padding-left: 4em;">                          UNNAMED-STREAM &ndash; for unnamed streams</div>
+<div style="padding-left: 4em;">                          ARRAY          &ndash; for arrays<br>
+
+</div>
+</div>
+<br>
+        <code>peek<a name="index1764"></a>(<i>addrs</i>)</code> [SAL]<br>
+        <code>(peek <tt><i>addrs</i></tt>)</code> [LISP]   &ndash; peek at a location in memory<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>addrs</i>  &ndash;   the address to peek at (integer)</div>
+<div style="padding-left: 2em;">            returns    &ndash; the value at the specified address (integer)<br>
+
+</div>
+<br>
+        <code>poke<a name="index1765"></a>(<i>addrs</i>, <i>value</i>)</code> [SAL]<br>
+        <code>(poke <tt><i>addrs</i></tt> <tt><i>value</i></tt>)</code> [LISP] &ndash;  poke a value into memory<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>addrs</i>  &ndash;   the address to poke (integer)</div>
+<div style="padding-left: 2em;">            <i>value</i>  &ndash;   the value to poke into the address (integer)</div>
+<div style="padding-left: 2em;">            returns    &ndash; the value<br>
+
+</div>
+<br>
+        <code>bigendianp<a name="index1766"></a>()</code> [SAL]<br>
+        <code>(bigendianp<a name="index1767"></a><a name="index1768"></a><a name="index1769"></a>)</code> [LISP] &ndash;  is this a big-endian machine?<br>
+
+
+</div><div style="padding-left: 2em;">
+            returns    &ndash; T if this a big-endian architecture, storing the high-order byte of an integer at the lowest byte address of the integer; otherwise, NIL.<br>
+
+ <a href = "foot.html#foot16">(Footnote 16)</a> <br>
+
+</div>
+<br>
+        <code>address-of<a name="index1770"></a>(<i>expr</i>)</code> [SAL]<br>
+        <code>(address-of <tt><i>expr</i></tt>)</code> [LISP]  &ndash; get the address of an xlisp node<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>expr</i>   &ndash;   the node</div>
+<div style="padding-left: 2em;">            returns    &ndash; the address of the node (integer)<br>
+
+</div>
+<br>
+        <code>exit<a name="index1771"></a>()</code> [SAL]<br>
+        <code>(exit)</code> [LISP]  &ndash;<br>
+
+        exit xlisp. (Note: in Audacity plug-ins, <code>exit</code> is<br>
+
+        undefined because exiting would terminate Audacity.)<br>
+
+
+</div><div style="padding-left: 2em;">
+            returns    &ndash; never returns<br>
+
+</div>
+<br>
+        <code>setup-console<a name="index1772"></a>()</code> [SAL]<br>
+        <code>(setup-console<a name="index1773"></a>)</code> [LISP]  &ndash; set default console attributes<br>
+
+
+</div><div style="padding-left: 2em;">
+            returns    &ndash; NIL</div>
+<div style="padding-left: 2em;">Note: Under Windows, Nyquist normally starts up in a medium-sized console window with black text and a white background, with a window title of "Nyquist." This is normally accomplished by calling <code>setup-console</code> in <code>system.lsp</code>. In Nyquist, you can avoid this behavior by setting <code>*setup-console*</code> to NIL in your <code>init.lsp</code> file. If <code>setup-console</code> is not called, Nyquist uses standard input and output as is. This is what you want if you are running Nyquist inside of emacs, for example.<a name="index1774"></a><br>
+
+</div>
+<br>
+        <code>echoenabled<a name="index1775"></a>(<i>flag</i>)</code> [SAL]<br>
+        <code>(echoenabled<a name="index1776"></a> <tt><i>flag</i></tt>)</code> [LISP]  &ndash; turn console input echoing on or off<br>
+
+
+</div><div style="padding-left: 2em;">
+            <i>flag</i>   &ndash; T to enable echo, NIL to disable</div>
+<div style="padding-left: 2em;">            returns    &ndash; NIL</div>
+<div style="padding-left: 2em;">Note: This function is only implemented under Linux and Mac OS X. If Nyquist I/O is redirected through pipes,<br>
+
+the Windows version does not echo the input, but the Linux and Mac versions do. You can turn off echoing with<br>
+
+this function. Under windows it is defined to do nothing.<br>
+
+</div>
+</div>
+
+<p>
+<a name = "263"><h3>File I/O Functions</h3></a><a name="index1777"></a>
+<p>
+<a name = "264"><h4>Input from a File</h4></a><a name="index1778"></a>
+<p>
+To open a file for input, use the <code>open</code> function with the keyword
+argument <code>:direction</code> set to <code>:input</code>.  To open a file for output,
+use the <code>open</code> function with the keyword argument <code>:direction</code> set
+to <code>:output</code>.  The <code>open</code> function takes a single required argument which
+is the name of the file to be opened.  This name can be in the form of a
+string or a symbol.  The <code>open</code> function returns an object of type
+<code>FILE-STREAM</code> if it succeeds in opening the specified file.  It returns the
+value <code>nil</code> if it fails.  In order to manipulate the file, it is
+necessary to save the value returned by the <code>open</code> function.  This is
+usually done by assigning it to a variable with the <code>setq</code> special form or by
+binding it using <code>let</code> or <code>let*</code>.  Here is an example:
+<p><pre>
+(setq fp (open "init.lsp" :direction :input))
+</pre></p>
+
+        Evaluating this expression will result in the file <code>init.lsp</code>
+        being opened.  The file object that will be returned by the <code>open</code>
+        function will be assigned to the variable <code>fp</code>.
+<p>
+        It is now possible to use the file for input.  To read an
+        expression from the file, just supply the value of the <code>fp</code>
+        variable as the optional <i>stream</i> argument to <code>read</code>.
+<p><pre>
+(read fp)
+</pre></p>
+
+        Evaluating this expression will result in reading the first
+        expression from the file <code>init.lsp</code>.  The expression will be
+        returned as the result of the <code>read</code> function.  More expressions
+        can be read from the file using further calls to the <code>read</code>
+        function.  When there are no more expressions to read, the <code>read</code>
+        function will return <code>nil</code> (or whatever value was supplied as the
+        second argument to <code>read</code>).
+<p>
+        Once you are done reading from the file, you should close it.
+        To close the file, use the following expression:
+<p><pre>
+(close fp)
+</pre></p>
+
+        Evaluating this expression will cause the file to be closed.
+<p>
+<a name = "265"><h4>Output to a File</h4></a><a name="index1779"></a>
+<p>
+        Writing to a file is pretty much the same as reading from one.
+        You need to open the file first.  This time you should use the
+        <code>open</code> function to indicate that you will do output to the file.
+        For example:
+<p><pre>
+(setq fp (open "test.dat" :direction :output))
+</pre></p>
+
+        Evaluating this expression will open the file <code>test.dat</code> for
+        output.  If the file already exists, its current contents will
+        be discarded.  If it doesn't already exist, it will be created.
+        In any case, a <code>FILE-STREAM</code> object will be returned by the <code>OPEN</code>
+        function.  This file object will be assigned to the <code>fp</code>
+        variable.
+<p>
+        It is now possible to write to this file by supplying the value
+        of the <code>fp</code> variable as the optional <i>stream</i> parameter in the  <code>print</code> function.
+<p><pre>
+(print "Hello there" fp)
+</pre></p>
+
+        Evaluating this expression will result in the string "Hello
+        there" being written to the file <code>test.dat</code>.  More data can be
+        written to the file using the same technique.
+<p>
+        Once you are done writing to the file, you should close it.
+        Closing an output file is just like closing an input file.
+<p><pre>
+(close fp)
+</pre></p>
+
+        Evaluating this expression will close the output file and make
+        it permanent.
+<p>
+<a name = "266"><h4>A Slightly More Complicated File Example</h4></a>
+<p>
+        This example shows how to open a file, read each Lisp expression
+        from the file and print it.  It demonstrates the use of files
+        and the use of the optional <i>stream</i> argument to the <code>read</code>
+        function.
+<p><pre>
+(do* ((fp (open "test.dat" :direction :input))
+      (ex (read fp) (read fp)))
+     ((null ex) nil)
+  (print ex))
+</pre></p>
+
+
+<hr>
+<a href = "part18.html">Previous Section</a> | <a href = "indx.html">Next Section (Index)</a> | <a href = "title.html#toc">Table of Contents</a> | <a href = "title.html">Title Page</a>
+</body></html>
