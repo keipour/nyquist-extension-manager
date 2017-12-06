@@ -667,13 +667,6 @@ public class MainFrame extends JFrame {
             menuButtonListener);
         menuAddItem(jMenuExtension, "About Extension Manager...", '\000', null, menuButtonListener);
 
-        if (!isMac()) {  // if isMac(), Quit (not Exit) and Prefs are on the 
-                         // application menu
-            menuAddItem(jMenuFile, "Preferences...", '\000', null, 
-                        menuButtonListener);
-            menuAddItem(jMenuFile, "Exit", '\000', null, menuButtonListener);
-        }
-
         jMenuWindow.setText("Window");
         menuAddItem(jMenuWindow, "Tile", 't', null, menuButtonListener);
         menuAddItem(jMenuWindow, "Browse", 'b', null, menuButtonListener);
