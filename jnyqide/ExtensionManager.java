@@ -29,6 +29,8 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
+import java.io.File;
+import java.io.PrintWriter;
 
 
 public class ExtensionManager extends JDialog {
@@ -112,9 +114,15 @@ public class ExtensionManager extends JDialog {
 				{
 					public void actionPerformed(ActionEvent arg0) 
 					{
+						String extDir = System.getenv("NYQEXTPATH");
+						MakeDirectory(extDir);
+						
 						int[] selectedRows = table.getSelectedRows();
 						for (int i = 0; i < selectedRows.length; ++i)
 						{
+							String packageName = table.getModel().getValueAt(selectedRows[i], 0).toString();
+							String packageDir = extDir + File.separator + packageName;
+							MakeDirectory(packageDir);
 							String link = table.getModel().getValueAt(selectedRows[i], 4).toString();
 							JOptionPane.showMessageDialog(contentPanel, link);
 						}
@@ -149,15 +157,18 @@ public class ExtensionManager extends JDialog {
 	String[] LoadExtensionData()
 	{
 		String link = "https://raw.githubusercontent.com/keipour/nyquist-extensions/master/extlist.txt";
+		return ReadFromURL(link).split(System.getProperty("line.separator"));
+	}
+	
+	private String ReadFromURL(String link)
+	{
 		try{
 		    URL url = new URL(link);
 			HttpURLConnection http = (HttpURLConnection) url.openConnection();
 			Map<String, List<String>> header = http.getHeaderFields();
 
 			InputStream stream = http.getInputStream();
-			String response = GetStringFromStream(stream);
-			
-			return response.split(System.getProperty("line.separator"));
+			return GetStringFromStream(stream);
 		} 
 		catch(Exception e)
 		{
@@ -165,7 +176,7 @@ public class ExtensionManager extends JDialog {
 		}
 	}
 	
-	private static String GetStringFromStream(InputStream stream) throws IOException 
+	private String GetStringFromStream(InputStream stream) throws IOException 
 	{
 		if (stream != null) {
 			Writer writer = new StringWriter();
@@ -174,15 +185,58 @@ public class ExtensionManager extends JDialog {
 			try {
 				Reader reader = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
 				int counter;
-				while ((counter = reader.read(buffer)) != -1) {
+				while ((counter = reader.read(buffer)) != -1) 
 					writer.write(buffer, 0, counter);
-				}
-			} finally {
+			} 
+			finally 
+			{
 				stream.close();
 			}
 			return writer.toString();
-		} else {
-			return "No Contents";
+		} 
+		else 
+		{
+			return null;
+		}
+	}
+	
+	private String SaveFromURL(String link, String dir)
+	{
+		String fileContent =  ReadFromURL(link);
+		if (fileContent == null) return null;
+		
+		String filename = ExtractFilenameFromGithubURL(link); 
+		String filepath = dir + File.separator + filename;
+		try
+		{
+			PrintWriter out = new PrintWriter(filepath);
+			out.println(fileContent);
+		}
+		catch (Exception e)	
+		{ 
+			JOptionPane.showMessageDialog(contentPanel, "Error writing file to " + filepath + "'!"); 
+		}
+		
+		return fileContent;
+	}
+	
+	private String ExtractFilenameFromGithubURL(String link)
+	{
+		return link.substring(link.lastIndexOf('/') + 1);
+	}
+	
+	private static void MakeDirectory(String path)
+	{
+		File theDir = new File(path);
+		
+		// if the directory does not exist, create it
+		if (!theDir.exists()) 
+		{
+		    try
+		    {
+		        theDir.mkdir();
+		    } 
+		    catch(SecurityException se) {   }        
 		}
 	}
 }
