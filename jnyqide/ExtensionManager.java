@@ -29,6 +29,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
 import java.io.File;
 import java.io.PrintWriter;
 
@@ -124,8 +125,15 @@ public class ExtensionManager extends JDialog {
 							String packageDir = extDir + File.separator + packageName;
 							MakeDirectory(packageDir);
 							String link = table.getModel().getValueAt(selectedRows[i], 4).toString();
-							JOptionPane.showMessageDialog(contentPanel, link);
+							String fileContent = SaveFromURL(link, packageDir);
+							String[] otherFiles = ExtractOtherFilesFromSAL(fileContent);
+							for (int j = 0; j < otherFiles.length; ++j)
+							{
+								String fileLink = DirFromGithubURL(link) + otherFiles[j];
+								fileContent = SaveFromURL(fileLink, packageDir);
+							}
 						}
+						JOptionPane.showMessageDialog(contentPanel, "Completed installing the selected packages!");
 					}
 				});
 				addButton.setActionCommand("Add");
@@ -143,6 +151,33 @@ public class ExtensionManager extends JDialog {
 				buttonPane.add(cancelButton);
 			}
 		}
+	}
+	
+	private String[] ExtractOtherFilesFromSAL(String fileContent)
+	{
+		String[] lines = fileContent.split(System.getProperty("line.separator"));
+		List<String> fileNames = new ArrayList<String>();
+		for (int i = 0; i < lines.length; ++i)
+		{
+			String line = lines[i].trim();
+			if (line.isEmpty()) continue;
+			if (line.substring(0, 2).equals(";;") == false) break;
+			try
+			{
+				line = line.substring(2).trim();
+				String searchTerm = "Additional-File:";
+				if (line.substring(0, searchTerm.length()).equalsIgnoreCase(searchTerm) == true)
+					fileNames.add(line.substring(searchTerm.length()).trim());
+			}
+			catch (Exception e)
+			{
+				continue;
+			}
+		}
+		String[] result = new String[fileNames.size()];
+		result = fileNames.toArray(result);
+
+		return result;
 	}
 	
 	String[] SplitExtensionData(String line, int numOfCells)
@@ -211,8 +246,9 @@ public class ExtensionManager extends JDialog {
 		{
 			PrintWriter out = new PrintWriter(filepath);
 			out.println(fileContent);
+			out.close();
 		}
-		catch (Exception e)	
+		catch (Exception e)
 		{ 
 			JOptionPane.showMessageDialog(contentPanel, "Error writing file to " + filepath + "'!"); 
 		}
@@ -225,6 +261,11 @@ public class ExtensionManager extends JDialog {
 		return link.substring(link.lastIndexOf('/') + 1);
 	}
 	
+	private String DirFromGithubURL(String link)
+	{
+		return link.substring(0, link.lastIndexOf('/') + 1);
+	}
+
 	private static void MakeDirectory(String path)
 	{
 		File theDir = new File(path);
