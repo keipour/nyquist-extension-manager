@@ -56,6 +56,8 @@ public class ExtensionManager extends JDialog {
 	 * Create the dialog.
 	 */
 	public ExtensionManager() {
+		setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+		setTitle("Extension Manager");
 		setBounds(100, 100, 450, 300);
 		getContentPane().setLayout(new BorderLayout());
 		contentPanel.setLayout(new FlowLayout());
