@@ -96,8 +96,8 @@ public class ExtensionManager extends JDialog {
 			
 			for (int i = 0; i < extensions.length; ++i)
 			{
-				String[] extension = SplitExtensionData(extensions[i]);
-		        dtm.addRow(new Object[] { "data", "data", "data", extensions[i], "data" });
+				String[] ext = SplitExtensionData(extensions[i], 5);
+		        dtm.addRow(new Object[] { ext[0], ext[2], ext[3], ext[4], ext[1] });
 			}
 		}
 		
@@ -129,9 +129,13 @@ public class ExtensionManager extends JDialog {
 		}
 	}
 	
-	String[] SplitExtensionData(String line)
+	String[] SplitExtensionData(String line, int numOfCells)
 	{
-		return null;
+		String[] result = new String[numOfCells];
+		result = line.split(",", numOfCells);
+		for (int i = 0; i < result.length; ++i)
+			result[i] = result[i].trim();
+		return result;
 	}
 		
 	String[] LoadExtensionData()
