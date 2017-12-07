@@ -13,6 +13,7 @@ import javax.swing.JScrollPane;
 import javax.swing.AbstractListModel;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.ListSelectionModel;
+import javax.swing.JOptionPane;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 
@@ -106,10 +107,17 @@ public class ExtensionManager extends JDialog {
 			buttonPane.setLayout(new FlowLayout(FlowLayout.RIGHT));
 			getContentPane().add(buttonPane, BorderLayout.SOUTH);
 			{
-				final JButton addButton = new JButton("Add Extensions");
-				addButton.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent arg0) {
-						addButton.setEnabled(false);
+				JButton addButton = new JButton("Install");
+				addButton.addActionListener(new ActionListener() 
+				{
+					public void actionPerformed(ActionEvent arg0) 
+					{
+						int[] selectedRows = table.getSelectedRows();
+						for (int i = 0; i < selectedRows.length; ++i)
+						{
+							String link = table.getModel().getValueAt(selectedRows[i], 4).toString();
+							JOptionPane.showMessageDialog(contentPanel, link);
+						}
 					}
 				});
 				addButton.setActionCommand("Add");
@@ -178,4 +186,3 @@ public class ExtensionManager extends JDialog {
 		}
 	}
 }
-
