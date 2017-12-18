@@ -26,7 +26,7 @@ public class MainFrame_ExtManAbout extends JDialog implements ActionListener {
 	  FlowLayout flowLayout2 = new FlowLayout();
 	  GridLayout gridLayout1 = new GridLayout();
 	  String product = "Nyquist IDE Extension Manager";
-	  String version = "Version 0.1 - December 2017";
+	  String version = "Version 0.2 - December 2017";
 	  String author = "Implemented by: Azarakhsh Keipour";
 	  String comments = "Developed as final project for 15-622 course in Fall 2017";
 

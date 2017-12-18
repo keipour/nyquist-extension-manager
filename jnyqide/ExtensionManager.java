@@ -36,34 +36,45 @@ import java.io.PrintWriter;
 
 public class ExtensionManager extends JDialog {
 
-	String ExtensioListLink = "https://raw.githubusercontent.com/keipour/nyquist-extensions/master/extlist.txt";
-	
 	private final JPanel contentPanel = new JPanel();
 	private JTable table;
+	private JPanel buttonPane = new JPanel();
 
 	/**
-	 * Launch the application.
+	 * Create the dialog for Extension Manager
 	 */
-	public static void main(String[] args) {
-		try {
-			ExtensionManager dialog = new ExtensionManager();
-			dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
-			dialog.setVisible(true);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-
-	/**
-	 * Create the dialog.
-	 */
-	public ExtensionManager() {
+	public ExtensionManager() 
+	{
+		// Set the extension manager window properties
 		setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
 		setTitle("Extension Manager");
 		setBounds(100, 100, 450, 300);
 		getContentPane().setLayout(new BorderLayout());
 		contentPanel.setLayout(new FlowLayout());
 		contentPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
+
+		// Add the table for the list of extensions
+		AddTableToWindow();
+		
+		// Add the lower panel for buttons
+		buttonPane = new JPanel();
+		buttonPane.setLayout(new FlowLayout(FlowLayout.RIGHT));
+		getContentPane().add(buttonPane, BorderLayout.SOUTH);
+
+		// Add the 'Install' button
+		AddInstallButton();
+		
+		// Add the 'Cancel' button
+		AddCancelButton();
+	}
+	
+	// ==================== Window-creation related functions ========================================
+
+	/**
+	 * This function adds a table grid for the list of extensions on the window 
+	 */
+	private void AddTableToWindow()
+	{
 		getContentPane().add(contentPanel, BorderLayout.CENTER);
 		{
 			table = new JTable();
@@ -71,23 +82,22 @@ public class ExtensionManager extends JDialog {
 			table.setCellSelectionEnabled(false);
 			table.setColumnSelectionAllowed(false);
 			table.setRowSelectionAllowed(true);
-			String header[] = new String[] { "Package", "Ver.", "Date", "Description", "URL" };
-			DefaultTableModel dtm = new DefaultTableModel(0, 0)			
+			String header[] = new String[] { "Package", "Ver.", "Date", "Description", "URL", "Checksum" };
+			DefaultTableModel dtm = new DefaultTableModel(0, 0)
 			{
 				Class[] columnTypes = new Class[] {
-						String.class, String.class, String.class, String.class, String.class
+						String.class, String.class, String.class, String.class, String.class, String.class
 				};
 				public Class getColumnClass(int columnIndex) {
 					return columnTypes[columnIndex];
 				}
 				boolean[] columnEditables = new boolean[] {
-					false, false, false, false, false
+					false, false, false, false, false, false
 				};
 				public boolean isCellEditable(int row, int column) {
 					return columnEditables[column];
 				}
 			};
-
 			dtm.setColumnIdentifiers(header);
 			table.setModel(dtm);
 			{
@@ -96,11 +106,13 @@ public class ExtensionManager extends JDialog {
 				table.getColumnModel().getColumn(2).setPreferredWidth(150);
 				table.getColumnModel().getColumn(3).setPreferredWidth(302);
 				table.getColumnModel().getColumn(4).setPreferredWidth(212);
+				table.getColumnModel().getColumn(5).setPreferredWidth(150);
 				getContentPane().add(table, BorderLayout.NORTH);
 			}
 			getContentPane().add(new JScrollPane(table));
+
 			
-			String[] extensions = LoadExtensionData(ExtensioListLink);
+			String[] extensions = LoadExtensionData(ExtensionListLink);
 			
 			for (int i = 0; i < extensions.length; ++i)
 			{
@@ -108,59 +120,75 @@ public class ExtensionManager extends JDialog {
 		        dtm.addRow(new Object[] { ext[0], ext[2], ext[3], ext[4], ext[1] });
 			}
 		}
-		
-		{
-			JPanel buttonPane = new JPanel();
-			buttonPane.setLayout(new FlowLayout(FlowLayout.RIGHT));
-			getContentPane().add(buttonPane, BorderLayout.SOUTH);
+	}
+	
+	/**
+	 * This function adds 'Install' button on the window.
+	 * Pressing this button will install the packages selected in the table. 
+	 */
+	private void AddInstallButton()
+	{
+		JButton installButton = new JButton("Install");
+
+		// Define 'Install' button functionality 
+		installButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) 
 			{
-				JButton addButton = new JButton("Install");
-				addButton.addActionListener(new ActionListener() 
+				String extDir = System.getenv("NYQEXTPATH");
+				
+				// To me: add boolean condition below
+				MakeDirectory(extDir);
+				
+				int[] selectedRows = table.getSelectedRows();
+				for (int i = 0; i < selectedRows.length; ++i)
 				{
-					public void actionPerformed(ActionEvent arg0) 
+					String packageName = table.getModel().getValueAt(selectedRows[i], 0).toString();
+					String packageDir = extDir + File.separator + packageName;
+					MakeDirectory(packageDir);
+					String link = table.getModel().getValueAt(selectedRows[i], 4).toString();
+					String fileContent = SaveFromURL(link, packageDir);
+					String[] otherFiles = ExtractOtherFilesFromSAL(fileContent);
+					for (int j = 0; j < otherFiles.length; ++j)
 					{
-						String extDir = System.getenv("NYQEXTPATH");
-						
-						// To me: add boolean condition below
-						MakeDirectory(extDir);
-						
-						int[] selectedRows = table.getSelectedRows();
-						for (int i = 0; i < selectedRows.length; ++i)
-						{
-							String packageName = table.getModel().getValueAt(selectedRows[i], 0).toString();
-							String packageDir = extDir + File.separator + packageName;
-							MakeDirectory(packageDir);
-							String link = table.getModel().getValueAt(selectedRows[i], 4).toString();
-							String fileContent = SaveFromURL(link, packageDir);
-							String[] otherFiles = ExtractOtherFilesFromSAL(fileContent);
-							for (int j = 0; j < otherFiles.length; ++j)
-							{
-								String fileLink = DirFromGithubURL(link) + otherFiles[j];
-								fileContent = SaveFromURL(fileLink, packageDir);
-							}
-						}
-						JOptionPane.showMessageDialog(contentPanel, "Completed installing the selected packages!");
+						String fileLink = DirFromGithubURL(link) + otherFiles[j];
+						fileContent = SaveFromURL(fileLink, packageDir);
 					}
-				});
-				addButton.setActionCommand("Add");
-				buttonPane.add(addButton);
-				getRootPane().setDefaultButton(addButton);
+				}
+				JOptionPane.showMessageDialog(contentPanel, "Completed installing the selected packages!");
 			}
-			{
-				JButton cancelButton = new JButton("Cancel");
-				cancelButton.addActionListener(new ActionListener() {
-					public void actionPerformed(ActionEvent arg0) {
-						dispose();
-					}
-				});
-				cancelButton.setActionCommand("Cancel");
-				buttonPane.add(cancelButton);
+		});
+
+		installButton.setActionCommand("Install");
+		buttonPane.add(installButton);
+		getRootPane().setDefaultButton(installButton);
+	}
+	
+	/**
+	 * This function adds 'Cancel' button on the window.
+	 * Pressing this button will close the Extension Manager window.
+	 */
+	private void AddCancelButton()
+	{
+		JButton cancelButton = new JButton("Cancel");
+
+		cancelButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				dispose();
 			}
-		}
+		});
+		
+		cancelButton.setActionCommand("Cancel");
+		buttonPane.add(cancelButton);
 	}
 	
 	// ====================== Project-dependent functions ============================================
 
+	/**
+	 * URL of the Extension list. Should directly point to the text file.
+	 */
+	private static String ExtensionListLink = "https://raw.githubusercontent.com/keipour/nyquist-extensions/master/extlist.txt";
+
+	
 	/**
 	 * This function retrieves and returns the list of additional files mentioned in 
 	 * a Nyquist extension file. The function assumes the following conditions:
@@ -175,7 +203,7 @@ public class ExtensionManager extends JDialog {
 	 * 
 	 * Returns null on any type of error or if no additional files found
 	 */
-	private String[] ExtractOtherFilesFromSAL(String fileContent)
+	private static String[] ExtractOtherFilesFromSAL(String fileContent)
 	{
 		try
 		{
