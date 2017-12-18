@@ -36,6 +36,8 @@ import java.io.PrintWriter;
 
 public class ExtensionManager extends JDialog {
 
+	String ExtensioListLink = "https://raw.githubusercontent.com/keipour/nyquist-extensions/master/extlist.txt";
+	
 	private final JPanel contentPanel = new JPanel();
 	private JTable table;
 
@@ -98,7 +100,7 @@ public class ExtensionManager extends JDialog {
 			}
 			getContentPane().add(new JScrollPane(table));
 			
-			String[] extensions = LoadExtensionData();
+			String[] extensions = LoadExtensionData(ExtensioListLink);
 			
 			for (int i = 0; i < extensions.length; ++i)
 			{
@@ -118,6 +120,8 @@ public class ExtensionManager extends JDialog {
 					public void actionPerformed(ActionEvent arg0) 
 					{
 						String extDir = System.getenv("NYQEXTPATH");
+						
+						// To me: add boolean condition below
 						MakeDirectory(extDir);
 						
 						int[] selectedRows = table.getSelectedRows();
@@ -155,51 +159,123 @@ public class ExtensionManager extends JDialog {
 		}
 	}
 	
+	// ====================== Project-dependent functions ============================================
+
+	/**
+	 * This function retrieves and returns the list of additional files mentioned in 
+	 * a Nyquist extension file. The function assumes the following conditions:
+	 * 
+	 * 1- The name of each additional file is in a separate line with the following format:
+	 *    ;;  Additional-File:  <additional-file-name>
+	 * 
+	 * 2- The function only reads the extension information section of the input file, 
+	 * and stops parsing on the first line that is not formatted as such. In other words, 
+	 * it will only parse the upper section of the file where all the lines are either empty
+	 * or start with ;;
+	 * 
+	 * Returns null on any type of error or if no additional files found
+	 */
 	private String[] ExtractOtherFilesFromSAL(String fileContent)
 	{
-		String[] lines = fileContent.split(System.getProperty("line.separator"));
-		List<String> fileNames = new ArrayList<String>();
-		for (int i = 0; i < lines.length; ++i)
+		try
 		{
-			String line = lines[i].trim();
-			if (line.isEmpty()) continue;
-			if (line.substring(0, 2).equals(";;") == false) break;
-			try
+			// Extract lines from the SAL file
+			String[] lines = fileContent.split(System.getProperty("line.separator"));
+			
+			// Parse the header of SAL file to find the additional files 
+			List<String> fileNames = new ArrayList<String>();
+			for (int i = 0; i < lines.length; ++i)
 			{
-				line = line.substring(2).trim();
-				String searchTerm = "Additional-File:";
-				if (line.substring(0, searchTerm.length()).equalsIgnoreCase(searchTerm) == true)
-					fileNames.add(line.substring(searchTerm.length()).trim());
+				String line = lines[i].trim();
+				
+				// Ignore the line if it is empty
+				if (line.isEmpty()) continue;
+				
+				// Stop parsing if we reach the end of extension info section 
+				// (i.e. stop if there is a line not starting with ;;)
+				if (line.substring(0, 2).equals(";;") == false) break;
+				
+				try
+				{
+					line = line.substring(2).trim();
+					
+					// If the line contains an additional file, extract it and add it to the list
+					String searchTerm = "Additional-File:";
+					if (line.substring(0, searchTerm.length()).equalsIgnoreCase(searchTerm) == true)
+						fileNames.add(line.substring(searchTerm.length()).trim());
+				}
+				catch (Exception e)
+				{
+					continue;
+				}
 			}
-			catch (Exception e)
-			{
-				continue;
-			}
+			
+			// Convert the file list to an array
+			String[] result = new String[fileNames.size()];
+			result = fileNames.toArray(result);
+	
+			return result;
 		}
-		String[] result = new String[fileNames.size()];
-		result = fileNames.toArray(result);
+		catch (Exception e)
+		{
+			return null;
+		}
+	}
 
-		return result;
+	/**
+	 * This function obtains extension information from a string line read from the 
+	 * extension list file. It assumes the following format:
+	 * info[1], info[2], ... , info[numOfCells]
+	 * Last cell can contain ',' or any other character, while the first numOfCells-1 
+	 * cells should not contain any commas.
+	 * Returns null on any type of error
+  	 */
+	private static String[] SplitExtensionData(String line, int numOfCells)
+	{
+		try
+		{
+			String[] result = new String[numOfCells];
+			result = line.split(",", numOfCells);
+			for (int i = 0; i < result.length; ++i)
+				result[i] = result[i].trim();
+			return result;
+		}
+		catch (Exception e)
+		{
+			return null;
+		}
 	}
+
+	/**
+	 * This function reads the extension list from the given URL and returns an 
+	 * array of extension data (information for each extension in one cell.
+	 * Assumes that the extension list has info for each extension on a separate line
+	 * Returns null on any type of error
+	 */
+	private static String[] LoadExtensionData(String link)
+	{
+		try
+		{
+			return ReadFromURL(link).split(System.getProperty("line.separator"));
+		}
+		catch (Exception e)
+		{
+			return null;
+		}
+	}
+
 	
-	String[] SplitExtensionData(String line, int numOfCells)
-	{
-		String[] result = new String[numOfCells];
-		result = line.split(",", numOfCells);
-		for (int i = 0; i < result.length; ++i)
-			result[i] = result[i].trim();
-		return result;
-	}
-		
-	String[] LoadExtensionData()
-	{
-		String link = "https://raw.githubusercontent.com/keipour/nyquist-extensions/master/extlist.txt";
-		return ReadFromURL(link).split(System.getProperty("line.separator"));
-	}
 	
-	private String ReadFromURL(String link)
+	// ===================== Project-independent functions ===========================================
+	
+	/**
+	 * Reads a text file from the given URL and returns it as a String object
+	 * Returns null on any type of error
+	 */
+	private static String ReadFromURL(String link)
 	{
-		try{
+		try
+		{
 		    URL url = new URL(link);
 			HttpURLConnection http = (HttpURLConnection) url.openConnection();
 			Map<String, List<String>> header = http.getHeaderFields();
@@ -207,79 +283,130 @@ public class ExtensionManager extends JDialog {
 			InputStream stream = http.getInputStream();
 			return GetStringFromStream(stream);
 		} 
-		catch(Exception e)
+		catch (Exception e)
 		{
 			return null;
 		}
 	}
 	
-	private String GetStringFromStream(InputStream stream) throws IOException 
+	
+	/**
+	 * Reads a text file from a stream and returns it as a String object
+	 * Returns null on any type of error
+	 */
+	private static String GetStringFromStream(InputStream stream) 
 	{
-		if (stream != null) {
+		if (stream != null) 
+		{
 			Writer writer = new StringWriter();
  
 			char[] buffer = new char[2048];
-			try {
+			try 
+			{
 				Reader reader = new BufferedReader(new InputStreamReader(stream, "UTF-8"));
 				int counter;
 				while ((counter = reader.read(buffer)) != -1) 
 					writer.write(buffer, 0, counter);
-			} 
-			finally 
-			{
+
 				stream.close();
+				return writer.toString();
 			}
-			return writer.toString();
+			catch (Exception e)
+			{
+				return null;
+			}
 		} 
-		else 
-		{
-			return null;
-		}
+		return null;
 	}
 	
-	private String SaveFromURL(String link, String dir)
+	
+	/**
+	 * Reads a text file from a stream and saves it in a local directory
+	 * Additionally, returns the read stream as a String object (only if saved successfully)
+	 * Returns null on any type of error
+	 */
+ 	private static String SaveFromURL(String link, String dir)
 	{
 		String fileContent =  ReadFromURL(link);
 		if (fileContent == null) return null;
 		
 		String filename = ExtractFilenameFromGithubURL(link); 
 		String filepath = dir + File.separator + filename;
+		
 		try
 		{
 			PrintWriter out = new PrintWriter(filepath);
 			out.println(fileContent);
 			out.close();
+			return fileContent;
 		}
 		catch (Exception e)
 		{ 
-			JOptionPane.showMessageDialog(contentPanel, "Error writing file to " + filepath + "'!"); 
+			return null; 
 		}
-		
-		return fileContent;
 	}
 	
-	private String ExtractFilenameFromGithubURL(String link)
+ 	
+	/**
+ 	 * Extract a file name from an URL. Only works if the filename is the last 
+ 	 * part of the URL after the last slash ('/')
+ 	 * E.g. this function returns 'extlist.txt' from the URL below 
+ 	 * https://raw.githubusercontent.com/keipour/nyquist-extensions/master/extlist.txt
+	 */
+	private static String ExtractFilenameFromGithubURL(String link)
 	{
-		return link.substring(link.lastIndexOf('/') + 1);
-	}
-	
-	private String DirFromGithubURL(String link)
-	{
-		return link.substring(0, link.lastIndexOf('/') + 1);
+		try 
+		{
+			return link.substring(link.lastIndexOf('/') + 1);
+		}
+		catch (Exception e)
+		{
+			return null;
+		}
 	}
 
-	private static void MakeDirectory(String path)
+	
+	/**
+	 * Extract the URL for directory from an URL, i.e. removes the file name from the 
+	 * input URL and returns the rest, including the '/' at the end. Only works if the directory is the 
+	 * part of the URL right before the last slash ('/'). 
+	 * E.g. this function removes 'extlist.txt' from the URL below 
+	 * https://raw.githubusercontent.com/keipour/nyquist-extensions/master/extlist.txt
+	 */
+	private static String DirFromGithubURL(String link)
+	{
+		try 
+		{
+			return link.substring(0, link.lastIndexOf('/') + 1);
+		}
+		catch (Exception e)
+		{
+			return null;
+		}
+	}
+
+	
+	/**
+	 * Create a local directory at the given path
+	 * Returns false on any kind of error
+ 	 */
+	private static boolean MakeDirectory(String path)
 	{
 		File theDir = new File(path);
 		
-		// if the directory does not exist, create it
+		// If the directory does not exist, create it
 		if (!theDir.exists()) 
 		{
 		    try
 		    {
 		        theDir.mkdir();
+		        return true;
 		    } 
-		    catch(SecurityException se) {   }        
+		    catch (Exception e) 
+		    {
+		    	return false;
+		    }        
 		}
+		return true;
 	}
 }
