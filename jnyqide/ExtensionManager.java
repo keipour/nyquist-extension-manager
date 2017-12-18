@@ -6,6 +6,7 @@ import java.awt.FlowLayout;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
 
+import javax.print.attribute.standard.OutputDeviceAssigned;
 import javax.swing.JButton;
 import javax.swing.JDialog;
 import javax.swing.JPanel;
@@ -47,6 +48,7 @@ public class ExtensionManager extends JDialog {
 	 */
 	private static String ExtensionListLink = "https://raw.githubusercontent.com/keipour/nyquist-extensions/master/extlist.txt";
 
+	
 	/**
 	 * Name of the environment variable containing the path for extensions directory.
 	 */
@@ -57,7 +59,9 @@ public class ExtensionManager extends JDialog {
 	private final JPanel contentPanel = new JPanel();
 	private JTable table;
 	private JPanel buttonPane = new JPanel();
+	private DefaultTableModel dtm;
 
+	
 	/**
 	 * Create the dialog for Extension Manager
 	 */
@@ -79,10 +83,9 @@ public class ExtensionManager extends JDialog {
 		buttonPane.setLayout(new FlowLayout(FlowLayout.RIGHT));
 		getContentPane().add(buttonPane, BorderLayout.SOUTH);
 
-		// Add the 'Install' button
+		// Add the buttons
 		AddInstallButton();
-		
-		// Add the 'Cancel' button
+		AddUpdateButton();
 		AddCancelButton();
 	}
 	
@@ -101,7 +104,7 @@ public class ExtensionManager extends JDialog {
 			table.setColumnSelectionAllowed(false);
 			table.setRowSelectionAllowed(true);
 			String header[] = new String[] { "Package", "Ver.", "Date", "Description", "URL", "Checksum" };
-			DefaultTableModel dtm = new DefaultTableModel(0, 0)
+			dtm = new DefaultTableModel(0, 0)
 			{
 				Class[] columnTypes = new Class[] {
 						String.class, String.class, String.class, String.class, String.class, String.class
@@ -110,7 +113,7 @@ public class ExtensionManager extends JDialog {
 					return columnTypes[columnIndex];
 				}
 				boolean[] columnEditables = new boolean[] {
-					false, false, false, false, false, false
+					false, false, false, false, false, true
 				};
 				public boolean isCellEditable(int row, int column) {
 					return columnEditables[column];
@@ -129,16 +132,10 @@ public class ExtensionManager extends JDialog {
 			}
 			getContentPane().add(new JScrollPane(table));
 
-			
-			String[] extensions = LoadExtensionData(ExtensionListLink);
-			
-			for (int i = 0; i < extensions.length; ++i)
-			{
-				String[] ext = SplitExtensionData(extensions[i], 5);
-		        dtm.addRow(new Object[] { ext[0], ext[2], ext[3], ext[4], ext[1] });
-			}
+			LoadExtensionDataToTable(true);
 		}
 	}
+	
 	
 	/**
 	 * This function adds 'Install' button on the window.
@@ -200,18 +197,44 @@ public class ExtensionManager extends JDialog {
 							continue;
 						}
 						
+						// Keep the list of all the files for checksum
+						List<String> packageFiles = new ArrayList<String>();
+						packageFiles.add(FileLocalPathFromURL(link, packageDir));
+						
 						// Parse the extension file to read the additional files  
 						String[] otherFiles = ExtractOtherFilesFromSAL(fileContent);
-						if (otherFiles == null) continue;
+						if (otherFiles == null)
+						{
+							JOptionPane.showMessageDialog(contentPanel, "Unknown error happened while parsing the extension file!\n'" + 
+								link + "'\n\nPackage '" + packageName + "' not installed!\n", 
+								"Error", JOptionPane.ERROR_MESSAGE);
+							failedPackages.add(packageName);
+							continue;
+						}
 						
 						// Download the additional files
 						for (int j = 0; j < otherFiles.length; ++j)
 						{
 							String fileLink = DirFromGithubURL(link) + otherFiles[j];
 							fileContent = SaveFromURL(fileLink, packageDir);
+							packageFiles.add(FileLocalPathFromURL(fileLink, packageDir));
 						}
 						
-						installedPackages.add(packageName);
+						// Compare the checksum of the downloaded files with the reference checksum 
+						String referenceChecksum = table.getModel().getValueAt(selectedRows[i], 5).toString(); 
+						String downloadedChecksum = CalculateFileChecksum(packageFiles);
+						if (downloadedChecksum.equalsIgnoreCase(referenceChecksum))
+							installedPackages.add(packageName);
+						else // remove the downloaded package if checksum is different
+						{
+							// Remove the downloaded files from the system
+							RemoveFiles(packageFiles);
+							
+							JOptionPane.showMessageDialog(contentPanel, "Checksum of the available package is different than the verified version!\n" + 
+									"Package '" + packageName + "' not installed!\n", 
+									"Checksum Error", JOptionPane.ERROR_MESSAGE);
+							failedPackages.add(packageName);
+						}
 					}
 					
 					// Show a message about the completion of installation
@@ -231,6 +254,7 @@ public class ExtensionManager extends JDialog {
 		getRootPane().setDefaultButton(installButton);
 	}
 	
+	
 	/**
 	 * This function adds 'Cancel' button on the window.
 	 * Pressing this button will close the Extension Manager window.
@@ -249,8 +273,56 @@ public class ExtensionManager extends JDialog {
 		buttonPane.add(cancelButton);
 	}
 	
+	
+	/**
+	 * This function adds 'Update' button on the window.
+	 * Pressing this button will update the extensions list from the remote server.
+	 */
+	private void AddUpdateButton()
+	{
+		JButton updateButton = new JButton("Update");
+
+		updateButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				LoadExtensionDataToTable(true);
+			}
+		});
+		
+		updateButton.setActionCommand("Update");
+		buttonPane.add(updateButton);
+	}
+
 	// ====================== Project-dependent functions ============================================
 
+	/**
+	 * Loads the extension data from to the grid table.
+	 */
+	private void LoadExtensionDataToTable(boolean fromNetwork)
+	{
+		try
+		{
+			dtm.setRowCount(0);
+			
+			String[] extensions = LoadExtensionData(ExtensionListLink);
+			
+			for (int i = 0; i < extensions.length; ++i)
+			{
+				// Ignore the line if it is a comment or if it is empty
+				if (extensions[i].trim().isEmpty()) continue;
+				if (extensions[i].trim().startsWith("#")) continue;
+									
+				String[] ext = SplitExtensionData(extensions[i], 6);
+		        dtm.addRow(new Object[] { ext[0], ext[2], ext[3], ext[5], ext[1], ext[4] });
+			}
+		}
+		catch (Exception e)
+		{	
+			JOptionPane.showMessageDialog(contentPanel, "Error loading the extension list from the following path: \n'" + 
+					ExtensionListLink + "'" + "\n\n" + e.toString(), "Error Loading Extensions", JOptionPane.ERROR_MESSAGE);
+		}
+	}
+	
+	
 	/**
 	 * Shows a message after installation of the packages.
 	 */
@@ -276,8 +348,13 @@ public class ExtensionManager extends JDialog {
 			else
 				messageType = JOptionPane.WARNING_MESSAGE;
 		}
-		JOptionPane.showMessageDialog(contentPanel, endMessage, "Job Completed", messageType);
+		
+		if (messageType == JOptionPane.ERROR_MESSAGE)
+			JOptionPane.showMessageDialog(contentPanel, "No packages were installed!", "Job Completed", messageType);
+		else
+			JOptionPane.showMessageDialog(contentPanel, endMessage, "Job Completed", messageType);
 	}
+	
 	
 	/**
 	 * Creates a directory at the path defined in a given environment variable. 
@@ -309,6 +386,7 @@ public class ExtensionManager extends JDialog {
 		// Return the path if everything was ok
 		return dirPath;
 	}
+	
 	
 	/**
 	 * This function retrieves and returns the list of additional files mentioned in 
@@ -371,6 +449,7 @@ public class ExtensionManager extends JDialog {
 		}
 	}
 
+	
 	/**
 	 * This function obtains extension information from a string line read from the 
 	 * extension list file. It assumes the following format:
@@ -395,6 +474,7 @@ public class ExtensionManager extends JDialog {
 		}
 	}
 
+	
 	/**
 	 * This function reads the extension list from the given URL and returns an 
 	 * array of extension data (information for each extension in one cell.
@@ -479,11 +559,12 @@ public class ExtensionManager extends JDialog {
 		String fileContent =  ReadFromURL(link);
 		if (fileContent == null) return null;
 		
-		String filename = ExtractFilenameFromGithubURL(link); 
-		String filepath = dir + File.separator + filename;
-		
+		String filepath = FileLocalPathFromURL(link, dir);
+		if (filepath == null) return null;
+
 		try
 		{
+		
 			PrintWriter out = new PrintWriter(filepath);
 			out.println(fileContent);
 			out.close();
@@ -496,7 +577,25 @@ public class ExtensionManager extends JDialog {
 	}
 	
  	
-	/**
+ 	/**
+ 	 * Generates the local path for a file from its URL and its local directory.
+	 * Returns null on any type of error.
+ 	 */
+ 	private static String FileLocalPathFromURL(String link, String dir)
+ 	{
+		try
+		{
+			String filename = ExtractFilenameFromGithubURL(link); 
+			return dir + File.separator + filename;
+		}
+		catch(Exception e)
+		{
+			return null;
+		}
+ 	}
+ 	
+	
+ 	/**
  	 * Extract a file name from an URL. Only works if the filename is the last 
  	 * part of the URL after the last slash ('/').
  	 * E.g. this function returns 'extlist.txt' from the URL below: 
@@ -559,19 +658,20 @@ public class ExtensionManager extends JDialog {
 		return true;
 	}
 	
+	
 	/**
 	 * Calculate the SHA-1 checksum of a given list of files.
 	 * Returns false on any kind of error.
  	 */
-	public static String CalculateFileChecksum(String[] filenames) throws Exception 
+	public static String CalculateFileChecksum(List<String> filenames) throws Exception 
 	{
 		try
 		{
 			MessageDigest md = MessageDigest.getInstance("SHA1");
 	
-			for (int i = 0; i < filenames.length; ++i)
+			for (String filename : filenames)
 			{
-				FileInputStream fis = new FileInputStream(filenames[i]);
+				FileInputStream fis = new FileInputStream(filename);
 
 				byte[] dataBytes = new byte[1024];
 				int nread = 0;
@@ -591,6 +691,26 @@ public class ExtensionManager extends JDialog {
 		catch (Exception e)
 		{
 			return null;
+		}
+	}
+
+
+	/**
+	 * This function removes a list of given files. 
+	 */
+	private static void RemoveFiles(List<String> filenames)
+	{
+		for (String filename : filenames)
+		{
+			try
+			{
+				File file = new File(filename); 
+				file.delete();
+			}
+			catch (Exception e)
+			{
+				continue;
+			}
 		}
 	}
 }
