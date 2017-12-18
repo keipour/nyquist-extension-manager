@@ -3,6 +3,8 @@ package jnyqide;
 
 import java.awt.BorderLayout;
 import java.awt.FlowLayout;
+import java.awt.event.ActionListener;
+import java.awt.event.ActionEvent;
 
 import javax.swing.JButton;
 import javax.swing.JDialog;
@@ -14,8 +16,7 @@ import javax.swing.AbstractListModel;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.ListSelectionModel;
 import javax.swing.JOptionPane;
-import java.awt.event.ActionListener;
-import java.awt.event.ActionEvent;
+
 
 
 import java.io.BufferedReader;
@@ -25,17 +26,34 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringWriter;
 import java.io.Writer;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.List;
-import java.util.Map;
-import java.util.ArrayList;
 import java.io.File;
 import java.io.PrintWriter;
+import java.io.FileInputStream;
 
+import java.net.HttpURLConnection;
+import java.net.URL;
+
+import java.util.List;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.ArrayList;
+
+import java.security.MessageDigest;
 
 public class ExtensionManager extends JDialog {
 
+	/**
+	 * URL of the Extension list. Should directly point to the text file.
+	 */
+	private static String ExtensionListLink = "https://raw.githubusercontent.com/keipour/nyquist-extensions/master/extlist.txt";
+
+	/**
+	 * Name of the environment variable containing the path for extensions directory.
+	 */
+	private static String ExtensionDirectoryEnvVariable = "NYQEXTPATH";
+	
+
+	
 	private final JPanel contentPanel = new JPanel();
 	private JTable table;
 	private JPanel buttonPane = new JPanel();
@@ -71,7 +89,7 @@ public class ExtensionManager extends JDialog {
 	// ==================== Window-creation related functions ========================================
 
 	/**
-	 * This function adds a table grid for the list of extensions on the window 
+	 * This function adds a table grid for the list of extensions on the window.
 	 */
 	private void AddTableToWindow()
 	{
@@ -134,27 +152,77 @@ public class ExtensionManager extends JDialog {
 		installButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) 
 			{
-				String extDir = System.getenv("NYQEXTPATH");
-				
-				// To me: add boolean condition below
-				MakeDirectory(extDir);
-				
-				int[] selectedRows = table.getSelectedRows();
-				for (int i = 0; i < selectedRows.length; ++i)
+				try
 				{
-					String packageName = table.getModel().getValueAt(selectedRows[i], 0).toString();
-					String packageDir = extDir + File.separator + packageName;
-					MakeDirectory(packageDir);
-					String link = table.getModel().getValueAt(selectedRows[i], 4).toString();
-					String fileContent = SaveFromURL(link, packageDir);
-					String[] otherFiles = ExtractOtherFilesFromSAL(fileContent);
-					for (int j = 0; j < otherFiles.length; ++j)
+					// Create the extensions directory at the path defined in the environment variable
+					String extDir = CreateDirectoryFromEnvVariable(ExtensionDirectoryEnvVariable); 
+					if (extDir == null) return;
+					
+					// Define lists for installed and failed packages (used for the final message)
+					List<String> installedPackages = new ArrayList<String>();
+					List<String> failedPackages = new ArrayList<String>();
+					
+					// Retrieve the selected rows from table
+					int[] selectedRows = table.getSelectedRows();
+					if (selectedRows.length == 0)
 					{
-						String fileLink = DirFromGithubURL(link) + otherFiles[j];
-						fileContent = SaveFromURL(fileLink, packageDir);
+						JOptionPane.showMessageDialog(contentPanel, "No packages selected to install!", 
+								"Packages", JOptionPane.WARNING_MESSAGE);
+						return;
 					}
+					
+					// Install the selected packages
+					for (int i = 0; i < selectedRows.length; ++i)
+					{
+						// Create a sub-directory in extensions directory with package name
+						String packageName = table.getModel().getValueAt(selectedRows[i], 0).toString();
+						String packageDir = extDir + File.separator + packageName;
+						if (MakeDirectory(packageDir) == false)
+						{
+							JOptionPane.showMessageDialog(contentPanel, "Error creating directory at the following path:\n'" + 
+									packageDir + "'\n\nPackage '" + packageName + "' not installed!", 
+									"Directory Creation Problem", JOptionPane.ERROR_MESSAGE);
+							
+							failedPackages.add(packageName);
+							continue;
+						}
+	
+						// Read the contents of the selected package file
+						String link = table.getModel().getValueAt(selectedRows[i], 4).toString();
+						String fileContent = SaveFromURL(link, packageDir);
+						if (fileContent == null)
+						{
+							JOptionPane.showMessageDialog(contentPanel, "Error reading the following URL:\n'" + 
+									link + "'\n\nPackage '" + packageName + "' not installed!", 
+									"Error", JOptionPane.ERROR_MESSAGE);
+							
+							failedPackages.add(packageName);
+							continue;
+						}
+						
+						// Parse the extension file to read the additional files  
+						String[] otherFiles = ExtractOtherFilesFromSAL(fileContent);
+						if (otherFiles == null) continue;
+						
+						// Download the additional files
+						for (int j = 0; j < otherFiles.length; ++j)
+						{
+							String fileLink = DirFromGithubURL(link) + otherFiles[j];
+							fileContent = SaveFromURL(fileLink, packageDir);
+						}
+						
+						installedPackages.add(packageName);
+					}
+					
+					// Show a message about the completion of installation
+					ShowPostInstallationMessage(installedPackages, failedPackages);
 				}
-				JOptionPane.showMessageDialog(contentPanel, "Completed installing the selected packages!");
+				catch (Exception e)
+				{
+					JOptionPane.showMessageDialog(contentPanel, "An unknown error happened installing the packages!\nNo packages installed!\n" + 
+							"Error message: " + e.toString(), 
+							"Unknown Problem", JOptionPane.ERROR_MESSAGE);
+				}
 			}
 		});
 
@@ -184,10 +252,63 @@ public class ExtensionManager extends JDialog {
 	// ====================== Project-dependent functions ============================================
 
 	/**
-	 * URL of the Extension list. Should directly point to the text file.
+	 * Shows a message after installation of the packages.
 	 */
-	private static String ExtensionListLink = "https://raw.githubusercontent.com/keipour/nyquist-extensions/master/extlist.txt";
+	private void ShowPostInstallationMessage(List<String> installedPackages, List<String> failedPackages)
+	{
+		// Announce the failed and installed packages
+		String endMessage = "Completed installation!";
+		int messageType = -1;
+		if (installedPackages.size() > 0)
+		{
+			endMessage += "\n\nThe following package(s) were successfully installed:\n";
+			for (String pkg : installedPackages) 
+				endMessage += "'" + pkg + "'  ";
+			messageType = JOptionPane.INFORMATION_MESSAGE;
+		}
+		if (failedPackages.size() > 0)
+		{
+			endMessage += "\n\nInstallation of the following package(s) failed:\n";
+			for (String pkg : failedPackages) 
+				endMessage += "'" + pkg + "'  ";
+			if (messageType == -1)
+				messageType = JOptionPane.ERROR_MESSAGE;
+			else
+				messageType = JOptionPane.WARNING_MESSAGE;
+		}
+		JOptionPane.showMessageDialog(contentPanel, endMessage, "Job Completed", messageType);
+	}
+	
+	/**
+	 * Creates a directory at the path defined in a given environment variable. 
+	 * Returns the directory path read from the environment variable. 
+	 * 
+	 * Returns null on any type of error.
+	 */
+	private String CreateDirectoryFromEnvVariable(String envVar)
+	{
+		// Read the path for directory  
+		String dirPath = System.getenv(envVar);
+		if (dirPath == null)
+		{
+			JOptionPane.showMessageDialog(contentPanel, "Error! Extension directory path is not defined in '" + 
+					envVar + "' environment variable!\nNo packages installed!", 
+					"Environment Variable Problem", JOptionPane.ERROR_MESSAGE);
+			return null;
+		}
 
+		// Create the extensions directory
+		if (MakeDirectory(dirPath) == false)
+		{
+			JOptionPane.showMessageDialog(contentPanel, "Error creating directory at the following path:\n'" + 
+					dirPath + "'\n\nNo packages installed!", 
+					"Directory Creation Problem", JOptionPane.ERROR_MESSAGE);
+			return null;
+		}
+		
+		// Return the path if everything was ok
+		return dirPath;
+	}
 	
 	/**
 	 * This function retrieves and returns the list of additional files mentioned in 
@@ -199,9 +320,9 @@ public class ExtensionManager extends JDialog {
 	 * 2- The function only reads the extension information section of the input file, 
 	 * and stops parsing on the first line that is not formatted as such. In other words, 
 	 * it will only parse the upper section of the file where all the lines are either empty
-	 * or start with ;;
+	 * or start with double semicolons (;;).
 	 * 
-	 * Returns null on any type of error or if no additional files found
+	 * Returns null on any type of error or if no additional files found.
 	 */
 	private static String[] ExtractOtherFilesFromSAL(String fileContent)
 	{
@@ -256,7 +377,7 @@ public class ExtensionManager extends JDialog {
 	 * info[1], info[2], ... , info[numOfCells]
 	 * Last cell can contain ',' or any other character, while the first numOfCells-1 
 	 * cells should not contain any commas.
-	 * Returns null on any type of error
+	 * Returns null on any type of error.
   	 */
 	private static String[] SplitExtensionData(String line, int numOfCells)
 	{
@@ -277,8 +398,8 @@ public class ExtensionManager extends JDialog {
 	/**
 	 * This function reads the extension list from the given URL and returns an 
 	 * array of extension data (information for each extension in one cell.
-	 * Assumes that the extension list has info for each extension on a separate line
-	 * Returns null on any type of error
+	 * Assumes that the extension list has info for each extension on a separate line.
+	 * Returns null on any type of error.
 	 */
 	private static String[] LoadExtensionData(String link)
 	{
@@ -297,8 +418,8 @@ public class ExtensionManager extends JDialog {
 	// ===================== Project-independent functions ===========================================
 	
 	/**
-	 * Reads a text file from the given URL and returns it as a String object
-	 * Returns null on any type of error
+	 * Reads a text file from the given URL and returns it as a String object.
+	 * Returns null on any type of error.
 	 */
 	private static String ReadFromURL(String link)
 	{
@@ -319,8 +440,8 @@ public class ExtensionManager extends JDialog {
 	
 	
 	/**
-	 * Reads a text file from a stream and returns it as a String object
-	 * Returns null on any type of error
+	 * Reads a text file from a stream and returns it as a String object.
+	 * Returns null on any type of error.
 	 */
 	private static String GetStringFromStream(InputStream stream) 
 	{
@@ -349,9 +470,9 @@ public class ExtensionManager extends JDialog {
 	
 	
 	/**
-	 * Reads a text file from a stream and saves it in a local directory
-	 * Additionally, returns the read stream as a String object (only if saved successfully)
-	 * Returns null on any type of error
+	 * Reads a text file from a stream and saves it in a local directory.
+	 * Additionally, returns the read stream as a String object (only if saved successfully).
+	 * Returns null on any type of error.
 	 */
  	private static String SaveFromURL(String link, String dir)
 	{
@@ -377,8 +498,8 @@ public class ExtensionManager extends JDialog {
  	
 	/**
  	 * Extract a file name from an URL. Only works if the filename is the last 
- 	 * part of the URL after the last slash ('/')
- 	 * E.g. this function returns 'extlist.txt' from the URL below 
+ 	 * part of the URL after the last slash ('/').
+ 	 * E.g. this function returns 'extlist.txt' from the URL below: 
  	 * https://raw.githubusercontent.com/keipour/nyquist-extensions/master/extlist.txt
 	 */
 	private static String ExtractFilenameFromGithubURL(String link)
@@ -398,7 +519,7 @@ public class ExtensionManager extends JDialog {
 	 * Extract the URL for directory from an URL, i.e. removes the file name from the 
 	 * input URL and returns the rest, including the '/' at the end. Only works if the directory is the 
 	 * part of the URL right before the last slash ('/'). 
-	 * E.g. this function removes 'extlist.txt' from the URL below 
+	 * E.g. this function removes 'extlist.txt' from the URL below:
 	 * https://raw.githubusercontent.com/keipour/nyquist-extensions/master/extlist.txt
 	 */
 	private static String DirFromGithubURL(String link)
@@ -415,8 +536,8 @@ public class ExtensionManager extends JDialog {
 
 	
 	/**
-	 * Create a local directory at the given path
-	 * Returns false on any kind of error
+	 * Create a local directory at the given path.
+	 * Returns false on any kind of error.
  	 */
 	private static boolean MakeDirectory(String path)
 	{
@@ -436,5 +557,40 @@ public class ExtensionManager extends JDialog {
 		    }        
 		}
 		return true;
+	}
+	
+	/**
+	 * Calculate the SHA-1 checksum of a given list of files.
+	 * Returns false on any kind of error.
+ 	 */
+	public static String CalculateFileChecksum(String[] filenames) throws Exception 
+	{
+		try
+		{
+			MessageDigest md = MessageDigest.getInstance("SHA1");
+	
+			for (int i = 0; i < filenames.length; ++i)
+			{
+				FileInputStream fis = new FileInputStream(filenames[i]);
+
+				byte[] dataBytes = new byte[1024];
+				int nread = 0;
+				while ((nread = fis.read(dataBytes)) != -1) 
+					md.update(dataBytes, 0, nread);
+			}
+
+			byte[] mdbytes = md.digest();
+			
+			// Convert the bytes to hex format
+			StringBuffer sb = new StringBuffer("");
+			for (int i = 0; i < mdbytes.length; i++) 
+				sb.append(Integer.toString((mdbytes[i] & 0xff) + 0x100, 16).substring(1));
+			
+			return sb.toString();
+		}
+		catch (Exception e)
+		{
+			return null;
+		}
 	}
 }
